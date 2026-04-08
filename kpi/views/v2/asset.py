@@ -790,7 +790,26 @@ class AssetViewSet(
         user = get_database_user(self.request.user)
         serializer.save(owner=User.objects.get(username=user))
 
+    def _check_subdomain_access(self, asset_owner_id):
+        """
+        Raises Http404 if the requesting user does not share the same Keycloak
+        subdomain as the given asset owner. Non-Keycloak users are passed
+        through without restriction.
+        """
+        try:
+            kc_user = KeycloakModel.objects.get(user=self.request.user)
+        except KeycloakModel.DoesNotExist:
+            return
+
+        subdomain = kc_user.subdomain
+        subdomain_user_ids = KeycloakModel.objects.filter(
+            subdomain=subdomain
+        ).values_list('user_id', flat=True)
+        if asset_owner_id not in subdomain_user_ids:
+            raise Http404
+
     def perform_destroy(self, instance):
+        self._check_subdomain_access(instance.owner.id)
         self._bulk_asset_actions(
             {'payload': {'asset_uids': [instance.uid], 'action': 'delete'}}
         )
@@ -870,18 +889,8 @@ class AssetViewSet(
         else:
             source_version = original_asset.asset_versions.first()
 
-        kc_user = None
-        try:
-            kc_user = KeycloakModel.objects.get(user=self.request.user)
-        except KeycloakModel.DoesNotExist:
-            raise Http404
+        self._check_subdomain_access(original_asset.owner.id)
 
-        if kc_user is not None:
-            subdomain = kc_user.subdomain
-            subdomain_userIds = KeycloakModel.objects.filter(subdomain=subdomain).values_list('user_id', flat=True)
-            if original_asset.owner.id not in subdomain_userIds:
-                raise Http404
-        
         partial_update = isinstance(current_asset, Asset)
         cloned_data = self._prepare_cloned_data(original_asset, source_version, partial_update)
         if partial_update:

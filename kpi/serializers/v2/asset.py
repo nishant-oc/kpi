@@ -212,10 +212,20 @@ class AssetBulkActionsSerializer(serializers.Serializer):
                 deny=False
             ).count()
         else:
-            objects_count = Asset.objects.filter(
-                owner=self.__user,
-                uid__in=asset_uids,
-            ).count()
+            try:
+                kc_user = KeycloakModel.objects.get(user=self.__user)
+                subdomain_user_ids = KeycloakModel.objects.filter(
+                    subdomain=kc_user.subdomain
+                ).values_list('user_id', flat=True)
+                objects_count = Asset.objects.filter(
+                    owner__in=subdomain_user_ids,
+                    uid__in=asset_uids,
+                ).count()
+            except KeycloakModel.DoesNotExist:
+                objects_count = Asset.objects.filter(
+                    owner=self.__user,
+                    uid__in=asset_uids,
+                ).count()
 
         if objects_count != len(asset_uids):
             raise exceptions.PermissionDenied()
