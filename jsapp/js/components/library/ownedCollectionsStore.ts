@@ -79,10 +79,7 @@ class OwnedCollectionsStore extends Reflux.Store {
   }
 
   onAssetChangedOrCreated(asset: AssetResponse) {
-    if (
-      asset.asset_type === ASSET_TYPES.collection.id &&
-      asset.owner__username === sessionStore.currentAccount.username
-    ) {
+    if (asset.asset_type === ASSET_TYPES.collection.id) {
       let wasUpdated = false;
       for (let i = 0; i < this.data.collections.length; i++) {
         if (this.data.collections[i].uid === asset.uid) {
