@@ -802,10 +802,9 @@ class AssetViewSet(
             return
 
         subdomain = kc_user.subdomain
-        subdomain_user_ids = KeycloakModel.objects.filter(
-            subdomain=subdomain
-        ).values_list('user_id', flat=True)
-        if asset_owner_id not in subdomain_user_ids:
+        if not KeycloakModel.objects.filter(
+            subdomain=subdomain, user_id=asset_owner_id
+        ).exists():
             raise Http404
 
     def perform_destroy(self, instance):
@@ -881,7 +880,10 @@ class AssetViewSet(
         :return: AssetSerializer
         """
         original_uid = self.request.data[CLONE_ARG_NAME]
-        original_asset = get_object_or_404(Asset, uid=original_uid)
+        original_asset = get_object_or_404(
+            get_objects_for_user(self.request.user, 'view_asset', Asset),
+            uid=original_uid,
+        )
         if CLONE_FROM_VERSION_ID_ARG_NAME in self.request.data:
             original_version_id = self.request.data.get(CLONE_FROM_VERSION_ID_ARG_NAME)
             source_version = get_object_or_404(
