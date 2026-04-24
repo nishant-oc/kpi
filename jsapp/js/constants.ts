@@ -290,6 +290,7 @@ export enum QuestionTypeName {
   text = 'text',
   time = 'time',
   video = 'video',
+  pii_encrypted = 'pii_encrypted',
 }
 
 interface QuestionTypeDefinition {
@@ -349,6 +350,7 @@ export const QUESTION_TYPES: QuestionTypes = Object.freeze({
   text: {label: t('Text'), icon: 'qt-text', id: QuestionTypeName.text},
   time: {label: t('Time'), icon: 'qt-time', id: QuestionTypeName.time},
   video: {label: t('Video Upload'), icon: 'qt-video', id: QuestionTypeName.video},
+  pii_encrypted: {label: t('PII (Encrypted)'), icon: 'lock', id: QuestionTypeName.pii_encrypted},
 });
 
 /**

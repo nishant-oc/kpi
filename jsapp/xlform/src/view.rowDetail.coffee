@@ -279,18 +279,44 @@ module.exports = do ->
 
   viewRowDetail.DetailViewMixins = {}
 
-  viewRowDetail.DetailViewMixins.type =
+   viewRowDetail.DetailViewMixins.type =
     html: -> false
     insertInDOM: (rowView)->
       typeStr = @model.get("typeId")
       if !(@model._parent.constructor.kls is "Group")
-        iconClassName = $icons.get(typeStr)?.get("iconClassName")
-        iconLabel = $icons.get(typeStr)?.get("label")
-        if !iconClassName
-          console?.error("could not find icon for type: #{typeStr}")
-          iconClassName = "k-icon k-icon-alert"
+        externalValue = @model._parent.getValue('bind::oc:external')
+        if externalValue is 'contactdata'
+          iconClassName = "k-icon k-icon-lock"
+          iconLabel = t("PII (Encrypted)")
+        else
+          iconClassName = $icons.get(typeStr)?.get("iconClassName")
+          iconLabel = $icons.get(typeStr)?.get("label")
+          if !iconClassName
+            console?.error("could not find icon for type: #{typeStr}")
+            iconClassName = "k-icon k-icon-alert"
         rowView.$el.find(".card__header-icon").addClass('k-icon').addClass(iconClassName)
         rowView.$el.find(".card__indicator__icon").attr("data-tip", "#{iconLabel}")
+      return
+    onOcCustomEvent: (ocCustomEventArgs) ->
+      sender = ocCustomEventArgs.sender
+      senderValue = ocCustomEventArgs.value
+      senderQuestionId = sender._parent.cid
+      questionId = @model._parent.cid
+      if (sender.key is 'bind::oc:external') and (questionId is senderQuestionId)
+        $headerIcon = @rowView.$el.find(".card__header-icon")
+        $indicatorIcon = @rowView.$el.find(".card__indicator__icon")
+        typeStr = @model.get("typeId")
+        iconDef = $icons.get(typeStr)
+        if senderValue is 'contactdata'
+          if iconDef
+            $headerIcon.removeClass(iconDef.get("iconClassName"))
+          $headerIcon.addClass("k-icon k-icon-lock")
+          $indicatorIcon.attr("data-tip", t("PII (Encrypted)"))
+        else
+          $headerIcon.removeClass("k-icon k-icon-lock")
+          if iconDef
+            $headerIcon.addClass(iconDef.get("iconClassName"))
+            $indicatorIcon.attr("data-tip", iconDef.get("label"))
       return
 
 
@@ -1054,7 +1080,14 @@ module.exports = do ->
       if (sender.key is 'bind::oc:external') and (questionId is senderQuestionId)
         @$el.siblings(".message").remove();
         @$el.closest('div').removeClass("input-error")
-        if senderValue in ['clinicaldata', 'contactdata', 'identifier']
+        if senderValue is 'contactdata'
+          @removeFieldCheckCondition()
+          $input = @$('input')
+          $input.val('')
+          $input.prop('disabled', true)
+          @model.set('value', '')
+        else if senderValue in ['clinicaldata', 'identifier']
+          @$('input').prop('disabled', false)
           @removeRequired()
           @makeFieldCheckCondition({
             checkIfNotEmpty: true,
@@ -1062,9 +1095,28 @@ module.exports = do ->
           })
         else
           @$el.removeClass('hidden')
+          @$('input').prop('disabled', false)
           @makeRequired()
       else
+        @$('input').prop('disabled', false)
         @makeRequired()
+    html: ->
+      @fieldTab = "active"
+      @$el.addClass("card__settings__fields--#{@fieldTab}")
+      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Group"), 'text', 'Enter data set name'
+    afterRender: ->
+      @listenForInputChange()
+      externalValue = @model._parent.getValue('bind::oc:external')
+      if externalValue is 'contactdata'
+        @removeFieldCheckCondition()
+        $input = @$('input')
+        $input.val('')
+        $input.prop('disabled', true)
+        @model.set('value', '')
+      else
+        @makeRequired()
+
+  viewRowDetail.DetailViewMixins.oc_briefdescription =
     html: ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
@@ -1159,9 +1211,24 @@ module.exports = do ->
       @contact_data_type_class_name = 'contact-data-type'
       @$label_select_contact_data_type = $('<span/>', { class: @contact_data_type_class_name, style: 'display: block; margin-top: 10px;' }).text(t('Contact Data Type') + ":")
       @$select_contact_data_type = $('<select/>', { class: @contact_data_type_class_name, style: 'margin-top: 5px;' })
-      $('<option />', {value: "select", text: "- select -"}).appendTo(@$select_contact_data_type)
-      @contact_data_type_options = ['firstname', 'lastname', 'email', 'mobilenumber', 'secondaryid']
+     @contact_data_type_options = [
+        {value: 'firstname',      label: 'firstname'}
+        {value: 'middlename',     label: 'middlename'}
+        {value: 'lastname',       label: 'lastname'}
+        {value: 'email',          label: 'email'}
+        {value: 'mobilenumber',   label: 'mobilenumber'}
+        {value: 'streetaddress1', label: 'streetaddress1'}
+        {value: 'streetaddress2', label: 'streetaddress2'}
+        {value: 'city',           label: 'city'}
+        {value: 'state',          label: 'state'}
+        {value: 'country',        label: 'country'}
+        {value: 'postalcode',     label: 'postalcode'}
+        {value: 'fulldob',        label: 'fulldob'}
+        {value: 'secondaryid',    label: 'secondaryid'}
+        {value: 'hospitalnumber', label: 'hospitalnumber'}
+      ]
       for contact_data_type_option in @contact_data_type_options
+        $('<option />', {value: contact_data_type_option.value, text: contact_data_type_option.label}).appendTo(@$select_contact_data_type)
         $('<option />', {value: "#{contact_data_type_option}", text: "#{contact_data_type_option}"}).appendTo(@$select_contact_data_type)
 
       @identifier_type_class_name = 'identifier-type'
@@ -1178,15 +1245,15 @@ module.exports = do ->
         @$('.settings__input').append(@$select_contact_data_type)
 
         instance_contactdata_value = @rowView.model.attributes['instance::oc:contactdata'].get 'value'
-        if instance_contactdata_value != '' and (instance_contactdata_value in @contact_data_type_options)
+        contact_data_values = (opt.value for opt in @contact_data_type_options)
+        if instance_contactdata_value != '' and (instance_contactdata_value in contact_data_values)
           @$select_contact_data_type.val(instance_contactdata_value)
+        else
+          @$select_contact_data_type.val('firstname')
+          @rowView.model.attributes['instance::oc:contactdata'].set 'value', 'firstname'
 
         @$select_contact_data_type.change () =>
-          if @$select_contact_data_type.val() == 'select'
-            @rowView.model.attributes['instance::oc:contactdata'].set 'value', ''
-          else
-            @rowView.model.attributes['instance::oc:contactdata'].set 'value', @$select_contact_data_type.val()
-
+          @rowView.model.attributes['instance::oc:contactdata'].set 'value', @$select_contact_data_type.val()
       addSelectIdentifierType = () =>
         @$('.settings__input').append(@$label_select_identifier_type)
         @$('.settings__input').append(@$select_identifier_type)
