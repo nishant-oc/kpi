@@ -9,9 +9,9 @@ do ->
     # Total count
     ###
     describe 'collection size', ->
-      it 'has 13 question type icons in total', ->
-        # r1(4) + r2(4) + r3(4) + r4(1) = 13
-        expect($icons.length).toBe(13)
+      it 'has 14 question type icons in total', ->
+        # r1(4) + r2(4) + r3(4) + r4(2: select_one_from_file + pii_encrypted) = 14
+        expect($icons.length).toBe(14)
 
     ###
     # Per-model attribute presence
@@ -72,9 +72,10 @@ do ->
         r3 = $icons.filter (icon) -> icon.get('grouping') is 'r3'
         expect(r3.length).toBe(4)
 
-      it 'row r4 contains exactly 1 icon', ->
+      it 'row r4 contains exactly 2 icons', ->
+        # select_one_from_file + pii_encrypted
         r4 = $icons.filter (icon) -> icon.get('grouping') is 'r4'
-        expect(r4.length).toBe(1)
+        expect(r4.length).toBe(2)
 
     ###
     # Row 1: basic input types
@@ -156,6 +157,36 @@ do ->
         found = $icons.find (icon) ->
           icon.get('id') is 'select_one_from_file' and icon.get('grouping') is 'r4'
         expect(found).toBeDefined()
+
+      it 'includes pii_encrypted in r4', ->
+        found = $icons.find (icon) ->
+          icon.get('id') is 'pii_encrypted' and icon.get('grouping') is 'r4'
+        expect(found).toBeDefined()
+
+    ###
+    # PII (Encrypted) question type icon
+    ###
+    describe 'pii_encrypted icon', ->
+      beforeEach ->
+        @piiIcon = $icons.find (icon) -> icon.get('id') is 'pii_encrypted'
+
+      it 'pii_encrypted icon exists in the collection', ->
+        expect(@piiIcon).toBeDefined()
+
+      it 'pii_encrypted icon has label "PII (Encrypted)"', ->
+        expect(@piiIcon.get('label')).toBe('PII (Encrypted)')
+
+      it 'pii_encrypted iconClassName includes "k-icon-lock"', ->
+        expect(@piiIcon.get('iconClassName').indexOf('k-icon-lock')).not.toBe(-1)
+
+      it 'pii_encrypted iconClassName starts with "k-icon k-icon-"', ->
+        expect(@piiIcon.get('iconClassName').indexOf('k-icon k-icon-')).toBe(0)
+
+      it 'pii_encrypted iconClassNameLocked ends with "-lock"', ->
+        expect(@piiIcon.get('iconClassNameLocked').slice(-5)).toBe('-lock')
+
+      it 'pii_encrypted is grouped in r4', ->
+        expect(@piiIcon.get('grouping')).toBe('r4')
 
     ###
     # grouped() method

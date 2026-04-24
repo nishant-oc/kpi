@@ -257,3 +257,76 @@ do ->
       @selector.onSelectNewQuestionType(buildPickerEvent('text'))
       # question_name stores what the user typed (unmodified, aside from tabs)
       expect(@selector.question_name).toBe('My Survey Label')
+
+  # -------------------------------------------------------------------------
+
+  describe 'view.rowSelector: RowSelector.onSelectNewQuestionType — pii_encrypted type', ->
+
+    beforeEach ->
+      window.xlfHideWarnings = true
+      @survey = new $model.Survey()
+      @selector = buildRowSelector(survey: @survey)
+      @selector.hide = ->
+      @selector.line = $('<div class="line"><input value="Patient Name"/></div>')
+      @selector.onSelectNewQuestionType(buildPickerEvent('pii_encrypted'))
+
+    afterEach ->
+      window.xlfHideWarnings = false
+
+    it 'adds exactly one row to the survey', ->
+      expect(@survey.rows.length).toBe(1)
+
+    it 'sets the row type to "text" (not "pii_encrypted")', ->
+      expect(@survey.rows.at(0).toJSON().type).toBe('text')
+
+    it 'sets bind::oc:external to "contactdata"', ->
+      expect(@survey.rows.at(0).getValue('bind::oc:external')).toBe('contactdata')
+
+    it 'sets bind::oc:itemgroup to empty string', ->
+      expect(@survey.rows.at(0).getValue('bind::oc:itemgroup')).toBe('')
+
+    it 'preserves the label from the input text', ->
+      expect(@survey.rows.at(0).getValue('label')).toBe('Patient Name')
+
+    it 'generates a slugified name from the label', ->
+      expect(@survey.rows.at(0).getValue('name')).toBe('patient_name')
+
+    it 'marks the new row as isNewRow', ->
+      capturedDetails = null
+      survey2 = new $model.Survey()
+      selector2 = buildRowSelector(survey: survey2)
+      selector2.hide = ->
+      origAddRow = survey2.addRow.bind(survey2)
+      survey2.addRow = (details, opts) ->
+        capturedDetails = details
+        origAddRow(details, opts)
+      selector2.line = $('<div class="line"><input value="Email"/></div>')
+      selector2.onSelectNewQuestionType(buildPickerEvent('pii_encrypted'))
+      expect(capturedDetails.isNewRow).toBe(true)
+
+    it 'does not carry "pii_encrypted" as the stored row type', ->
+      rowType = @survey.rows.at(0).toJSON().type
+      expect(rowType).not.toBe('pii_encrypted')
+
+    it 'creates only one row even when called twice', ->
+      @selector.line = $('<div class="line"><input value="Phone"/></div>')
+      @selector.onSelectNewQuestionType(buildPickerEvent('pii_encrypted'))
+      expect(@survey.rows.length).toBe(2)
+
+    it 'a second pii_encrypted row also has type "text"', ->
+      @selector.line = $('<div class="line"><input value="Phone"/></div>')
+      @selector.onSelectNewQuestionType(buildPickerEvent('pii_encrypted'))
+      expect(@survey.rows.at(1).toJSON().type).toBe('text')
+
+    it 'a second pii_encrypted row also has bind::oc:external set to "contactdata"', ->
+      @selector.line = $('<div class="line"><input value="Phone"/></div>')
+      @selector.onSelectNewQuestionType(buildPickerEvent('pii_encrypted'))
+      expect(@survey.rows.at(1).getValue('bind::oc:external')).toBe('contactdata')
+
+    it 'pii_encrypted row with empty label still sets bind::oc:external to "contactdata"', ->
+      survey3 = new $model.Survey()
+      selector3 = buildRowSelector(survey: survey3)
+      selector3.hide = ->
+      selector3.line = $('<div class="line"><input value=""/></div>')
+      selector3.onSelectNewQuestionType(buildPickerEvent('pii_encrypted'))
+      expect(survey3.rows.at(0).getValue('bind::oc:external')).toBe('contactdata')

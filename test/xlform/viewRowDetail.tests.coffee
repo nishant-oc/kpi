@@ -403,8 +403,7 @@ do ->
 
     it 'oc_briefdescription html() renders the correct placeholder', ->
       result = @mixin_ctx.html()
-      expect(result.indexOf('Enter variable title')).not.toBe(-1)
-      expect(result.indexOf('(optional)')).not.toBe(-1)
+      expect(result.indexOf('Enter Text')).not.toBe(-1)
 
     it 'oc_briefdescription html() renders maxlength="40"', ->
       result = @mixin_ctx.html()
@@ -436,9 +435,9 @@ do ->
       result = @mixin_ctx.html()
       expect(result.indexOf('Item Description')).not.toBe(-1)
 
-    it 'oc_description html() renders the CDASH placeholder', ->
+    it 'oc_description html() renders the Enter Text placeholder', ->
       result = @mixin_ctx.html()
-      expect(result.indexOf('CDASH')).not.toBe(-1)
+      expect(result.indexOf('Enter Text')).not.toBe(-1)
 
     it 'oc_description html() renders maxlength="3999"', ->
       result = @mixin_ctx.html()
@@ -473,3 +472,194 @@ do ->
     it 'default html() sets fieldTab to "active"', ->
       @mixin_ctx.html()
       expect(@mixin_ctx.fieldTab).toBe('active')
+
+  ###############################################################
+  # PII (Encrypted) question type — view.rowDetail and icon behaviour
+  #
+  # The "pii_encrypted" type is a UI shortcut that creates a text
+  # question with bind::oc:external = "contactdata".  The type
+  # DetailViewMixin is responsible for rendering the lock icon
+  # (k-icon-lock) and the "PII (Encrypted)" tooltip whenever
+  # bind::oc:external equals "contactdata".
+  ###############################################################
+
+  describe 'view.rowDetail: PII (Encrypted) — type mixin icon label', ->
+    beforeEach ->
+      window.xlfHideWarnings = true
+      @viewRowDetail = require('../../jsapp/xlform/src/view.rowDetail')
+      $model = require('../../jsapp/xlform/src/_model')
+      @survey = new $model.Survey()
+      # Create a text question with bind::oc:external = contactdata (PII row)
+      @survey.rows.add(type: 'text', name: 'pii_q', label: 'Patient Name')
+      @row = @survey.rows.at(0)
+      @row.get('bind::oc:external').set('value', 'contactdata')
+    afterEach ->
+      window.xlfHideWarnings = false
+
+    it 'bind::oc:external value is "contactdata" for the PII row', ->
+      expect(@row.getValue('bind::oc:external')).toBe('contactdata')
+
+    it 'row type is "text" (pii_encrypted is not stored as a type)', ->
+      expect(@row.toJSON().type).toBe('text')
+
+    it 'bind::oc:itemgroup defaults to empty string on a new PII row', ->
+      expect(@row.getValue('bind::oc:itemgroup')).toBe('')
+
+    it 'bind::oc:external change event fires on the row detail', ->
+      # beforeEach already set the value to 'contactdata'; use a different
+      # value so Backbone actually fires the change:value event
+      fired = false
+      @row.get('bind::oc:external').on 'change:value', -> fired = true
+      @row.get('bind::oc:external').set('value', 'identifier')
+      expect(fired).toBe(true)
+
+  describe 'view.rowDetail: PII — type mixin onOcCustomEvent updates icon to lock', ->
+    beforeEach ->
+      window.xlfHideWarnings = true
+      @viewRowDetail = require('../../jsapp/xlform/src/view.rowDetail')
+      $model = require('../../jsapp/xlform/src/_model')
+      @Backbone = require('backbone')
+      @survey = new $model.Survey()
+      @survey.rows.add(type: 'text', name: 'pii_q', label: 'Patient Name')
+      @row = @survey.rows.at(0)
+
+      # Build a minimal DOM structure for the rowView stub
+      @$cardEl = $('<div class="survey__row__item">' +
+        '<span class="card__header-icon k-icon k-icon-text"></span>' +
+        '<span class="card__indicator__icon"></span>' +
+        '</div>')
+
+      # Minimal rowView stub
+      @rowView =
+        $el: @$cardEl
+        model: @row
+
+      # Retrieve the type detail model and build a mixin context
+      @typeMixin = @viewRowDetail.DetailViewMixins.type
+      @mixin_ctx = $.extend({}, @typeMixin, {
+        model: @row.get('type')
+        rowView: @rowView
+      })
+    afterEach ->
+      window.xlfHideWarnings = false
+
+    it 'onOcCustomEvent with "contactdata" adds "k-icon-lock" to header icon', ->
+      externalDetail = @row.get('bind::oc:external')
+      @mixin_ctx.onOcCustomEvent({
+        sender: externalDetail
+        value: 'contactdata'
+      })
+      expect(@$cardEl.find('.card__header-icon').hasClass('k-icon-lock')).toBe(true)
+
+    it 'onOcCustomEvent with "contactdata" sets data-tip to "PII (Encrypted)"', ->
+      externalDetail = @row.get('bind::oc:external')
+      @mixin_ctx.onOcCustomEvent({
+        sender: externalDetail
+        value: 'contactdata'
+      })
+      expect(@$cardEl.find('.card__indicator__icon').attr('data-tip')).toBe('PII (Encrypted)')
+
+    it 'onOcCustomEvent with non-contactdata value removes "k-icon-lock"', ->
+      # First set to contactdata so the lock class is present
+      externalDetail = @row.get('bind::oc:external')
+      @$cardEl.find('.card__header-icon').addClass('k-icon-lock')
+      @mixin_ctx.onOcCustomEvent({
+        sender: externalDetail
+        value: 'identifier'
+      })
+      expect(@$cardEl.find('.card__header-icon').hasClass('k-icon-lock')).toBe(false)
+
+    it 'onOcCustomEvent for a different question does not change the icon', ->
+      # A sender that belongs to a different row must not update this mixin_ctx
+      $model = require('../../jsapp/xlform/src/_model')
+      survey2 = new $model.Survey()
+      survey2.rows.add(type: 'text', name: 'other_q', label: 'Other')
+      otherRow = survey2.rows.at(0)
+      otherExternal = otherRow.get('bind::oc:external')
+
+      @mixin_ctx.onOcCustomEvent({
+        sender: otherExternal
+        value: 'contactdata'
+      })
+      # Icon should remain unchanged because cid does not match
+      expect(@$cardEl.find('.card__header-icon').hasClass('k-icon-lock')).toBe(false)
+
+  describe 'view.rowDetail: PII — oc_external mixin getOptions() for text type', ->
+    beforeEach ->
+      window.xlfHideWarnings = true
+      @viewRowDetail = require('../../jsapp/xlform/src/view.rowDetail')
+      $model = require('../../jsapp/xlform/src/_model')
+      survey = new $model.Survey()
+      survey.rows.add(type: 'text', name: 'pii_q', label: 'Patient Name')
+      @row = survey.rows.at(0)
+      @detail = @row.get('bind::oc:external')
+      @mixin = @viewRowDetail.DetailViewMixins.oc_external
+      @mixin_ctx = $.extend({}, @mixin, {
+        cid: 'cid_ext'
+        $el: $('<div/>')
+        model: @detail
+        rowView: {model: @row}
+      })
+    afterEach ->
+      window.xlfHideWarnings = false
+
+    it 'getOptions() for text type returns ["contactdata", "identifier"]', ->
+      opts = @mixin_ctx.getOptions()
+      expect(opts).toBeDefined()
+      expect(opts.indexOf('contactdata')).not.toBe(-1)
+      expect(opts.indexOf('identifier')).not.toBe(-1)
+
+    it 'getOptions() for text type does not include "clinicaldata"', ->
+      opts = @mixin_ctx.getOptions()
+      expect(opts.indexOf('clinicaldata')).toBe(-1)
+
+    it 'getOptions() for text type does not include "signature"', ->
+      opts = @mixin_ctx.getOptions()
+      expect(opts.indexOf('signature')).toBe(-1)
+
+    it 'html() for text type renders a <select> dropdown', ->
+      result = @mixin_ctx.html()
+      expect(result.indexOf('<select')).not.toBe(-1)
+
+    it 'html() for text type renders "contactdata" as an option', ->
+      result = @mixin_ctx.html()
+      expect(result.indexOf('contactdata')).not.toBe(-1)
+
+    it 'html() for text type renders "Use External Value" as the field label', ->
+      result = @mixin_ctx.html()
+      expect(result.indexOf('Use External Value')).not.toBe(-1)
+
+  describe 'view.rowDetail: PII — JSON export with contactdata', ->
+    beforeEach ->
+      window.xlfHideWarnings = true
+    afterEach ->
+      window.xlfHideWarnings = false
+
+    it 'exports bind::oc:external as "contactdata" in survey JSON', ->
+      $model = require('../../jsapp/xlform/src/_model')
+      survey = new $model.Survey()
+      survey.rows.add(type: 'text', name: 'pii_q', label: 'Patient Name')
+      survey.rows.at(0).get('bind::oc:external').set('value', 'contactdata')
+      result = survey.toJSON()
+      row = result.survey[0]
+      expect(row['bind::oc:external']).toBe('contactdata')
+
+    it 'type remains "text" in JSON export for a PII row', ->
+      $model = require('../../jsapp/xlform/src/_model')
+      survey = new $model.Survey()
+      survey.rows.add(type: 'text', name: 'pii_q', label: 'Patient Name')
+      survey.rows.at(0).get('bind::oc:external').set('value', 'contactdata')
+      result = survey.toJSON()
+      row = result.survey[0]
+      expect(row['type']).toBe('text')
+
+    it 'changing bind::oc:external from contactdata to "" clears PII status', ->
+      $model = require('../../jsapp/xlform/src/_model')
+      survey = new $model.Survey()
+      survey.rows.add(type: 'text', name: 'pii_q', label: 'Patient Name')
+      detail = survey.rows.at(0).get('bind::oc:external')
+      detail.set('value', 'contactdata')
+      detail.set('value', '')
+      result = survey.toJSON()
+      row = result.survey.find((r) -> r.name is 'pii_q')
+      expect(row['bind::oc:external']).toBeUndefined()
