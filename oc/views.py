@@ -27,8 +27,6 @@ from mozilla_django_oidc.utils import (
     import_from_settings,
 )
 
-from kobo.apps.service_health.views import get_response
-
 from oc.backend import get_client_secret, get_realm_name
 
 
@@ -285,15 +283,6 @@ class OCAppInfoView(View):
         except IOError:
             return HttpResponseNotFound()
 
-        failure, kobocat_message, kobocat_content = get_response(settings.KOBOCAT_INTERNAL_URL + '/app_info/')
-
-        kobocat_data = {}
-        if not failure:
-            kobocat_data = json.loads(kobocat_content)
-            kobocat_data["status"] = "passing"
-        else:
-            kobocat_data["status"] = "failed"
-
         kpi_data = {
             "name": package_info["name"],
             "description": package_info["description"],
@@ -301,6 +290,6 @@ class OCAppInfoView(View):
             "status": "passing"
         }
 
-        data = [kpi_data, kobocat_data]
+        data = [kpi_data]
 
         return JsonResponse(data, safe=False)

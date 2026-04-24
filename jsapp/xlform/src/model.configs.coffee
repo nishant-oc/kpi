@@ -302,7 +302,7 @@ module.exports = do ->
     "bind::oc:external":
       value: ''
     readonly:
-      value: false
+      value: ''
     calculation:
       value: ""
     "bind::oc:briefdescription":

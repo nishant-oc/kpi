@@ -323,19 +323,19 @@ type QuestionTypes = {
  */
 export const QUESTION_TYPES: QuestionTypes = Object.freeze({
   acknowledge: {label: t('Acknowledge'), icon: 'qt-acknowledge', id: QuestionTypeName.acknowledge},
-  audio: {label: t('Audio'), icon: 'qt-audio', id: QuestionTypeName.audio},
+  audio: {label: t('Audio Upload'), icon: 'qt-audio', id: QuestionTypeName.audio},
   barcode: {label: t('Barcode / QR Code'), icon: 'qt-barcode', id: QuestionTypeName.barcode},
   calculate: {label: t('Calculate'), icon: 'qt-calculate', id: QuestionTypeName.calculate},
   date: {label: t('Date'), icon: 'qt-date', id: QuestionTypeName.date},
   datetime: {label: t('Date & time'), icon: 'qt-date-time', id: QuestionTypeName.datetime},
   decimal: {label: t('Decimal'), icon: 'qt-decimal', id: QuestionTypeName.decimal},
   'xml-external': {label: t('External XML'), icon: 'qt-external-xml', id: QuestionTypeName['xml-external']},
-  file: {label: t('File'), icon: 'qt-file', id: QuestionTypeName.file},
+  file: {label: t('File Upload'), icon: 'qt-file', id: QuestionTypeName.file},
   geopoint: {label: t('Point'), icon: 'qt-point', id: QuestionTypeName.geopoint},
   geoshape: {label: t('Area'), icon: 'qt-area', id: QuestionTypeName.geoshape},
   geotrace: {label: t('Line'), icon: 'qt-line', id: QuestionTypeName.geotrace},
   hidden: {label: t('Hidden'), icon: 'qt-hidden', id: QuestionTypeName.hidden},
-  image: {label: t('Photo'), icon: 'qt-photo', id: QuestionTypeName.image},
+  image: {label: t('Photo Upload'), icon: 'qt-photo', id: QuestionTypeName.image},
   integer: {label: t('Integer'), icon: 'qt-number', id: QuestionTypeName.integer},
   kobomatrix: {label: t('Question Matrix'), icon: 'qt-question-matrix', id: QuestionTypeName.kobomatrix},
   note: {label: t('Note'), icon: 'qt-note', id: QuestionTypeName.note},
@@ -348,7 +348,7 @@ export const QUESTION_TYPES: QuestionTypes = Object.freeze({
   select_one_from_file: {label: t('Select One (External List)'), icon: 'qt-select-one-from-file', id: QuestionTypeName.select_one_from_file},
   text: {label: t('Text'), icon: 'qt-text', id: QuestionTypeName.text},
   time: {label: t('Time'), icon: 'qt-time', id: QuestionTypeName.time},
-  video: {label: t('Video'), icon: 'qt-video', id: QuestionTypeName.video},
+  video: {label: t('Video Upload'), icon: 'qt-video', id: QuestionTypeName.video},
 });
 
 /**

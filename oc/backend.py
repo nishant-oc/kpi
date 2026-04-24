@@ -226,7 +226,6 @@ def get_roles(decoded_token):
             "LOGGER from OCAuthenticationBackend"
         )
     _log('get_roles').info('get_roles 1')
-    print('haha')
     try:
         # Session logins and Bearer tokens from password Grant Types
         if 'realm_access' in decoded_token:

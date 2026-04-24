@@ -51,7 +51,7 @@ module.exports = do ->
       <section class="card__settings  row-extras row-extras--depr">
         <i class="card__settings-close k-icon k-icon-close js-toggle-card-settings"></i>
         <ul class="card__settings__tabs">
-          <li class="heading"><i class="k-icon k-icon-settings"></i> #{t("Settings")}</li>
+          <li class="heading"><i class="k-icon k-icon-edit"></i> #{t("Edit")}</li>
           <li data-card-settings-tab-id="row-options" class="card__settings__tabs__tab card__settings__tabs__tab--active">
             #{t("All group settings")}
           </li>
@@ -74,7 +74,7 @@ module.exports = do ->
       <section class="card__settings  row-extras row-extras--depr">
         <i class="card__settings-close k-icon k-icon-close js-toggle-card-settings"></i>
         <ul class="card__settings__tabs">
-          <li class="heading"><i class="k-icon k-icon-settings"></i> #{t("Settings")}</li>
+          <li class="heading"><i class="k-icon k-icon-edit"></i> #{t("Edit")}</li>
           <li data-card-settings-tab-id="row-options" class="card__settings__tabs__tab--active">
             #{t("Question Options")}
           </li>
@@ -89,7 +89,20 @@ module.exports = do ->
           </li>
         </ul>
         <div class="card__settings__content">
-          <ul class="js-card-settings-row-options card__settings__fields card__settings__fields--active"></ul>
+          <button type="button" class="card__settings__back js-toggle-card-settings" aria-label="#{t('Back')}">
+            <i class="k-icon k-icon-arrow-left" aria-hidden="true"></i>
+          </button>
+          <div class="js-card-settings-row-options card__settings__fields card__settings__fields--active card__settings__row-options">
+            <div class="card__settings__fields-grid js-card-settings-row-options-primary">
+              <div class="card__settings__fields-col js-card-settings-col-left"></div>
+              <div class="card__settings__fields-col js-card-settings-col-right"></div>
+            </div>
+            <div class="card__settings__advanced-toggle js-card-settings-advanced-toggle" aria-expanded="false" aria-controls="js-card-settings-row-options-advanced">
+              <span>#{t('Advanced options')}</span>
+              <i class="k-icon k-icon-angle-down card__settings__advanced-toggle__icon" aria-hidden="true"></i>
+            </div>
+            <div id="js-card-settings-row-options-advanced" class="card__settings__fields-grid js-card-settings-row-options-advanced is-collapsed"></div>
+          </div>
           <ul class="js-card-settings-skip-logic card__settings__fields"></ul>
           <ul class="js-card-settings-validation-criteria card__settings__fields"></ul>
           <ul class="js-card-settings-locked-features card__settings__fields locking__ui-hidden"></ul>
@@ -111,7 +124,7 @@ module.exports = do ->
             <input type="text" placeholder="#{t("Enter question hint (optional)")}" class="card__header-hint js-card-hint js-cancel-select-row js-cancel-sort">
           </div>
           <div class="card__buttons">
-            <span class="card__buttons__button card__buttons__button--settings card__buttons__button--gray js-toggle-card-settings" data-button-name="settings"><i class="k-icon k-icon-settings"></i></span>
+            <span class="card__buttons__button card__buttons__button--settings card__buttons__button--gray js-toggle-card-settings" data-button-name="settings"><i class="k-icon k-icon-edit"></i></span>
             <span class="card__buttons__button card__buttons__button--delete card__buttons__button--red js-delete-row" data-button-name="delete"><i class="k-icon k-icon-trash"></i></span>
       """
       if surveyView.features.multipleQuestions
@@ -145,7 +158,7 @@ module.exports = do ->
         <input type="text" class="card__header-title js-card-label js-cancel-select-row js-cancel-sort">
         <div class="card__buttons">
           <span class="card__buttons__button card__buttons__button--settings card__buttons__button--gray js-toggle-card-settings">
-            <i class="k-icon k-icon-settings"></i>
+            <i class="k-icon k-icon-edit"></i>
           </span>
 
           <span class="card__buttons__button card__buttons__button--delete card__buttons__button--red js-delete-group">
@@ -176,7 +189,7 @@ module.exports = do ->
             <input type="text" placeholder="#{t("Item label is required")}" class="card__header-title js-card-label js-cancel-select-row js-cancel-sort">
           </div>
           <div class="card__buttons">
-            <span class="card__buttons__button card__buttons__button--settings card__buttons__button--gray js-toggle-card-settings" data-button-name="settings"><i class="k-icon k-icon-settings"></i></span>
+            <span class="card__buttons__button card__buttons__button--settings card__buttons__button--gray js-toggle-card-settings" data-button-name="settings"><i class="k-icon k-icon-edit"></i></span>
             <span class="card__buttons__button card__buttons__button--delete card__buttons__button--red js-delete-row" data-button-name="delete"><i class="k-icon k-icon-trash"></i></span>
           </div>
         </div>

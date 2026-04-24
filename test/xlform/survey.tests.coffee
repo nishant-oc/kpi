@@ -63,27 +63,45 @@ do ->
           @row = @survey.rows.at(0)
         @expectValue = (key)->
           expect(@row.get(key).get('value'))
-      it 'text is required', ->
+      it 'required defaults to false for text', ->
         @populateRow(type: 'text')
-        @expectValue('required').toBe(false)
-      it 'select one is required', ->
+        @expectValue('required').toBe('false')
+      it 'required defaults to false for select_one', ->
         @populateRow(type: 'select_one')
-        @expectValue('required').toBe(false)
-      it 'integer is required', ->
+        @expectValue('required').toBe('false')
+      it 'required defaults to false for integer', ->
         @populateRow(type: 'integer')
-        @expectValue('required').toBe(false)
+        @expectValue('required').toBe('false')
       it 'geopoint is not required', ->
         @populateRow(type: 'geopoint')
-        @expectValue('required').toBe(false)
+        @expectValue('required').toBe('false')
       it 'geotrace is not required', ->
         @populateRow(type: 'geotrace')
-        @expectValue('required').toBe(false)
+        @expectValue('required').toBe('false')
       it 'geoshape is not required', ->
         @populateRow(type: 'geoshape')
-        @expectValue('required').toBe(false)
+        @expectValue('required').toBe('false')
       it 'note is not required', ->
         @populateRow(type: 'note')
-        @expectValue('required').toBe(false)
+        @expectValue('required').toBe('false')
+      it 'readonly defaults to empty string for new rows', ->
+        @populateRow(type: 'text')
+        @expectValue('readonly').toBe('')
+
+    describe 'readonly serialization', ->
+      it 'readonly empty string is absent from survey JSON export', ->
+        @survey.rows.add type: 'text', name: 'q1', label: 'Question 1'
+        result = @survey.toJSON()
+        row = result.survey[0]
+        delete row['$kuid']
+        expect(row['readonly']).toBeUndefined()
+      it 'explicit readonly value is included in survey JSON export', ->
+        @survey.rows.add type: 'text', name: 'q1', label: 'Question 1'
+        @survey.rows.at(0).get('readonly').set('value', 'true')
+        result = @survey.toJSON()
+        row = result.survey[0]
+        delete row['$kuid']
+        expect(row['readonly']).toBe('true')
 
     it 'has a valid empty survey', ->
       expect(@survey.toCSV()).toBeDefined()

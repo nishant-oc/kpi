@@ -86,11 +86,11 @@ class AssetSnapshotViewSet(OpenRosaViewSetMixin, NoUpdateModelViewSet):
                 owned_snapshots = queryset.filter(owner=user)
             return owned_snapshots | RelatedAssetPermissionsFilter(
                 ).filter_queryset(self.request, queryset, view=self)
-        
+
     def retrieve(self, request, *args, **kwargs):
         if request.method == 'HEAD':
             return Response(None, headers={
-                X_OPENROSA_ACCEPT_CONTENT_LENGTH : 
+                X_OPENROSA_ACCEPT_CONTENT_LENGTH :
                     settings.X_OPENROSA_ACCEPT_CONTENT_LENGTH_DEFAULT
             })
 

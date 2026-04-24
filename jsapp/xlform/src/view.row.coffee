@@ -664,7 +664,25 @@ module.exports = do ->
     _expandedRender: ->
       @$header.after($viewTemplates.row.rowSettingsView())
       @cardSettingsWrap = @$('.card__settings').eq(0)
-      @defaultRowDetailParent = @cardSettingsWrap.find('.js-card-settings-row-options').eq(0)
+      @primaryRowDetailParent = @cardSettingsWrap.find('.js-card-settings-row-options-primary').eq(0)
+      @primaryRowDetailParentLeft = @cardSettingsWrap.find('.js-card-settings-col-left').eq(0)
+      @primaryRowDetailParentRight = @cardSettingsWrap.find('.js-card-settings-col-right').eq(0)
+      @advancedRowDetailParent = @cardSettingsWrap.find('.js-card-settings-row-options-advanced').eq(0)
+      @defaultRowDetailParent = @primaryRowDetailParentLeft
+      @cardSettingsWrap.off('click.advancedToggle')
+      @cardSettingsWrap.on 'click.advancedToggle', '.js-card-settings-advanced-toggle', (evt) =>
+        evt.preventDefault()
+        $toggle = $(evt.currentTarget)
+        $advanced = @advancedRowDetailParent
+        isCollapsed = $advanced.hasClass('is-collapsed')
+        if isCollapsed
+          $advanced.removeClass('is-collapsed')
+          $toggle.addClass('is-expanded')
+          $toggle.attr('aria-expanded', 'true')
+        else
+          $advanced.addClass('is-collapsed')
+          $toggle.removeClass('is-expanded')
+          $toggle.attr('aria-expanded', 'false')
       questionType = @model.get('type').get('typeId')
 
       # don't display columns that start with a $
@@ -702,6 +720,11 @@ module.exports = do ->
             parameters: @model.getParameters(),
             questionType: questionType
           }).render().insertInDOM(@)
+
+      # Hide the advanced toggle and grid when there are no advanced fields
+      if @advancedRowDetailParent.children().length is 0
+        @cardSettingsWrap.find('.js-card-settings-advanced-toggle').hide()
+        @advancedRowDetailParent.hide()
 
       @applyLocking()
 

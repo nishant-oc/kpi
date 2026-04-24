@@ -62,6 +62,7 @@ from kpi.utils.hash import calculate_hash
 from kpi.serializers.v2.reports import ReportsDetailSerializer
 from kpi.utils.kobo_to_xlsform import to_xlsform_structure
 from kpi.utils.ss_structure_to_mdtable import ss_structure_to_mdtable
+from kpi.utils.permissions import is_owner_in_subdomain
 from kpi.utils.object_permission import (
     get_database_user,
     get_objects_for_user,
@@ -401,6 +402,18 @@ class AssetViewSet(
         'tags__name__icontains',
         'uid__icontains',
     ]
+
+    def get_permissions(self):
+        # The XML format of a single asset is publicly accessible without
+        # authentication, mirroring how AssetSnapshotViewSet treats .xml.
+        # Keying off accepted_renderer covers all negotiation paths:
+        # URL suffix (.xml), ?format=xml, and Accept: application/xml.
+        if (
+            self.action == 'retrieve'
+            and self.request.accepted_renderer.format == 'xml'
+        ):
+            return []
+        return super().get_permissions()
 
     def get_object(self):
         if self.request.method in ['PATCH', 'GET']:
@@ -797,15 +810,10 @@ class AssetViewSet(
         through without restriction.
         """
         try:
-            kc_user = KeycloakModel.objects.get(user=self.request.user)
+            if not is_owner_in_subdomain(self.request.user, asset_owner_id):
+                raise Http404
         except KeycloakModel.DoesNotExist:
             return
-
-        subdomain = kc_user.subdomain
-        if not KeycloakModel.objects.filter(
-            subdomain=subdomain, user_id=asset_owner_id
-        ).exists():
-            raise Http404
 
     def perform_destroy(self, instance):
         self._check_subdomain_access(instance.owner.id)

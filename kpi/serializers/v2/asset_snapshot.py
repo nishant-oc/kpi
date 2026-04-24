@@ -7,6 +7,7 @@ from bossoidc2.models import Keycloak as KeycloakModel
 from kpi.constants import PERM_VIEW_ASSET
 from kpi.fields import RelativePrefixHyperlinkedRelatedField, WritableJSONField
 from kpi.models import Asset, AssetSnapshot
+from kpi.utils.permissions import is_owner_in_subdomain
 
 
 class AssetSnapshotSerializer(serializers.HyperlinkedModelSerializer):
@@ -52,24 +53,17 @@ class AssetSnapshotSerializer(serializers.HyperlinkedModelSerializer):
     def check_subdomain_permission(self, asset):
         # Check if asset owner id in subdomain userIds
         user = self.context['request'].user
-        kc_user = None
-        try:
-            kc_user = KeycloakModel.objects.get(user=user)
-        except KeycloakModel.DoesNotExist:
-            raise serializers.ValidationError('User not found')
 
-        if kc_user is None:
-            raise serializers.ValidationError('User not found')
+        if isinstance(asset, dict) and 'owner' in asset:
+            asset_owner = asset['owner']
         else:
-            subdomain_userIds = KeycloakModel.objects.filter(subdomain=kc_user.subdomain).values_list('user_id', flat=True)
-            if isinstance(asset, dict) and 'owner' in asset:
-                asset_owner = asset['owner']
-            else:
-                asset_owner = asset.owner
+            asset_owner = asset.owner
 
-            if asset_owner.id not in subdomain_userIds:
-                # The client is not allowed to snapshot this asset
+        try:
+            if not is_owner_in_subdomain(user, asset_owner.id):
                 raise exceptions.PermissionDenied
+        except KeycloakModel.DoesNotExist:
+            raise exceptions.PermissionDenied
 
     def create(self, validated_data):
         """
@@ -137,8 +131,9 @@ class AssetSnapshotSerializer(serializers.HyperlinkedModelSerializer):
 
         if asset:
             if not user.has_perm(PERM_VIEW_ASSET, asset):
-                # The client is not allowed to snapshot this asset
-                raise exceptions.PermissionDenied
+                # Fall back to subdomain check: allow if the asset owner
+                # belongs to the same Keycloak subdomain as the requesting user
+                self.check_subdomain_permission(asset)
             if not source:
                 attrs.pop('source', None)
         elif source:

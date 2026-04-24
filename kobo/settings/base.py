@@ -36,9 +36,16 @@ SECRET_KEY = env.str('DJANGO_SECRET_KEY', '@25)**hc^rjaiagb4#&q*84hr*uscsxwr-cv#
 # SECURITY WARNING: If enabled, outer web server must filter out the `X-Forwarded-Proto` header.
 SECURE_PROXY_SSL_HEADER = env.tuple("SECURE_PROXY_SSL_HEADER", str, None)
 
-if env.str('PUBLIC_REQUEST_SCHEME', '').lower() == 'https' or SECURE_PROXY_SSL_HEADER:
+COOKIES_ARE_SECURE = (
+    env.str('PUBLIC_REQUEST_SCHEME', '').lower() == 'https'
+    or bool(SECURE_PROXY_SSL_HEADER)
+)
+if COOKIES_ARE_SECURE:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+# SameSite=None requires the Secure flag; fall back to 'Lax' when not serving over HTTPS
+_default_samesite = 'None' if COOKIES_ARE_SECURE else 'Lax'
 
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
 SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', False)
@@ -51,18 +58,29 @@ USE_X_FORWARDED_HOST = env.bool("USE_X_FORWARDED_HOST", False)
 # Domain must not exclude KoBoCAT when sharing sessions
 # NOTE: For multi-tenant setups with separate subdomains, keep cookie domains as None
 # to ensure each subdomain has its own isolated session and CSRF tokens
-ALLOWED_DOMAINS = env.list('ALLOWED_DOMAINS', default=[
-    '.openclinica.io',
-    '.openclinica-dev.io',
-])
+ALLOWED_DOMAINS = [
+    d.strip() for d in env.list('ALLOWED_DOMAINS', default=[
+        '.localhost.io',
+    ]) if d.strip()
+]
 
 SESSION_COOKIE_DOMAIN = None # always None for tenant isolation
 SESSION_COOKIE_NAME = env.str('SESSION_COOKIE_NAME', 'kobonaut_v2')
+SESSION_COOKIE_SAMESITE = env.str('SESSION_COOKIE_SAMESITE', _default_samesite)
 
 CSRF_COOKIE_DOMAIN = None # always None for tenant isolation
 CSRF_TRUSTED_ORIGINS = ALLOWED_DOMAINS
 CSRF_COOKIE_NAME = env.str('CSRF_COOKIE_NAME', 'occsrftoken_v2')
-CSRF_COOKIE_SAMESITE = env.str('CSRF_COOKIE_SAMESITE', 'None')
+CSRF_COOKIE_SAMESITE = env.str('CSRF_COOKIE_SAMESITE', _default_samesite)
+
+# Safety net: if SameSite=None was set explicitly via env var despite no HTTPS
+# detection, enforce Secure=True to prevent browsers from rejecting the cookie
+if SESSION_COOKIE_SAMESITE == 'None':
+    SESSION_COOKIE_SECURE = True
+    COOKIES_ARE_SECURE = True
+if CSRF_COOKIE_SAMESITE == 'None':
+    CSRF_COOKIE_SECURE = True
+    COOKIES_ARE_SECURE = True
 
 SESSION_SAVE_EVERY_REQUEST = True
 
@@ -1177,8 +1195,11 @@ else:
     except ValueError:  # db_url is unable to parse replica set strings
         mongo_db_name = env.str('MONGO_DB_NAME', 'formhub')
 
+MONGO_TIMEOUT_MS = env.int('MONGO_TIMEOUT_MS', 2000)  # 2 seconds
+
 mongo_client = MongoClient(
-    MONGO_DB_URL, connect=False, journal=True, tz_aware=True
+    MONGO_DB_URL, connect=False, journal=True, tz_aware=True,
+    serverSelectionTimeoutMS=MONGO_TIMEOUT_MS
 )
 MONGO_DB = mongo_client[mongo_db_name]
 

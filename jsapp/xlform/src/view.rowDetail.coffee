@@ -34,6 +34,7 @@ module.exports = do ->
       else if modelKey == 'bind::oc:description'
         modelKey = 'oc_description'
 
+      @modelKey = modelKey
       @extraClass = "xlf-dv-#{modelKey}"
       _.extend(@, viewRowDetail.DetailViewMixins[modelKey] || viewRowDetail.DetailViewMixins.default)
       @$el.addClass(@extraClass)
@@ -136,7 +137,27 @@ module.exports = do ->
     _insertInDOM: (where, how) ->
       where[how || 'append'](@el)
     insertInDOM: (rowView)->
-      @_insertInDOM rowView.defaultRowDetailParent
+      advancedKeys = [
+        'default'
+        'oc_item_group'
+        'calculation'
+        'trigger'
+        'readonly'
+      ]
+
+      rightColumnKeys = [
+        'appearance'
+        'oc_description'
+        'oc_external'
+      ]
+
+      target = rowView.defaultRowDetailParent
+      if rowView.advancedRowDetailParent? and (@modelKey in advancedKeys)
+        target = rowView.advancedRowDetailParent
+      else if rowView.primaryRowDetailParentRight? and (@modelKey in rightColumnKeys)
+        target = rowView.primaryRowDetailParentRight
+
+      @_insertInDOM target
 
     makeFieldCheckCondition: (opts={}) ->
       el = opts.el || @$('input').get(0) || @$('textarea').get(0)
@@ -548,7 +569,7 @@ module.exports = do ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
       label = if @model.key == 'default' then t("Default value") else @model.key.replace(/_/g, ' ')
-      viewRowDetail.Templates.textarea @cid, @model.key, label, 'text'
+      viewRowDetail.Templates.textarea @cid, @model.key, label, 'text', t('Enter Text')
     changeModelValue: () ->
       $textarea = $(@$('textarea').get(0))
       $elVal = $textarea.val().replace(/\n/g, "")
@@ -706,8 +727,8 @@ module.exports = do ->
       @$checkbox_samescreen = $('<input/>', { type: "checkbox", id: "checkbox-samescreen", style: 'margin-top: 10px;' })
       @$label_checkbox_samescreen = $('<span/>', { style: 'margin-left: 4px;' }).text(t('Show all questions in this group on the same screen'))
       @fieldListStr = 'field-list'
-      @$select_width = $('<select/>', { id: "select-width", style: 'margin-top: 5px;' })
-      @$label_select_width = $('<span/>', { style: 'display: block; margin-top: 10px;' }).text(t('Width') + ":")
+      @$select_width = $('<select/>', { id: "select-width" })
+      @$label_select_width = $('<label/>', { for: 'select-width' }).text(t('Width') + ":")
       @select_width_default_value = ''
       $('<option />', {value: "select", text: "Width not selected (w4 will be used)"}).appendTo(@$select_width)
       @width_options = []
@@ -868,8 +889,12 @@ module.exports = do ->
         $input = @$('input')
 
         if @is_form_style_theme_grid()
-          @$('.settings__input').append(@$label_select_width)
-          @$('.settings__input').append(@$select_width)
+          $width_field = $("""<div class="card__settings__fields__field xlf-dv-width-row">
+            <label for="select-width">#{t('Width')}:</label>
+            <span class="settings__input"></span>
+          </div>""")
+          $width_field.find('.settings__input').append(@$select_width)
+          @$el.append($width_field)
 
         if @is_form_style_exist() and @is_form_style_pages()
           $container_checkbox_samescreen = $('<div/>')
@@ -916,8 +941,12 @@ module.exports = do ->
 
       else # not group. this is question item appearance settings
         if @is_form_style_theme_grid()
-          @$('.settings__input').append(@$label_select_width)
-          @$('.settings__input').append(@$select_width)
+          $width_field = $("""<div class="card__settings__fields__field xlf-dv-width-row">
+            <label for="select-width">#{t('Width')}:</label>
+            <span class="settings__input"></span>
+          </div>""")
+          $width_field.find('.settings__input').append(@$select_width)
+          @$el.append($width_field)
 
           parent_column = 4
           if @model_get_parent_group()? and @model_get_parent_group_appearance() != ''
@@ -934,8 +963,12 @@ module.exports = do ->
           text_parent_columns = "Parent group has #{parent_column} columns"
           if parent_column == 1
             text_parent_columns = text_parent_columns.replace('columns', 'column')
-          $label_parent_columns = $('<span/>', { style: 'margin-left: 5px;' }).text(text_parent_columns)
-          @$('.settings__input').append($label_parent_columns)
+          $help_field = $("""<div class="card__settings__fields__field card__settings__fields__field--help-text-row">
+            <label></label>
+            <span class="settings__input"></span>
+          </div>""")
+          $help_field.find('.settings__input').text(text_parent_columns)
+          @$el.append($help_field)
 
         $select = @$('select').not('#select-width')
         if $select.length > 0 # Question item appearance is dropdown
@@ -1044,7 +1077,7 @@ module.exports = do ->
     html: ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
-      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Brief Description"), 'text', 'Enter variable title (may be used in display table column headers) (optional)', '40'
+      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Brief Description"), 'text', t('Enter Text'), '40'
     afterRender: ->
       @listenForInputChange()
 
@@ -1052,7 +1085,7 @@ module.exports = do ->
     html: ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
-      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Description"), 'text', 'Enter variable definition (e.g., CDASH data definition) (optional)', '3999'
+      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Description"), 'text', t('Enter Text'), '3999'
     afterRender: ->
       @listenForInputChange()
 
@@ -1231,7 +1264,7 @@ module.exports = do ->
     html: ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
-      viewRowDetail.Templates.textarea @cid, @model.key, t("Calculation"), 'text'
+      viewRowDetail.Templates.textarea @cid, @model.key, t("Calculation"), 'text', t('Enter Text')
     changeModelValue: () ->
       $textarea = $(@$('textarea').get(0))
       $elVal = $textarea.val().replace(/\n/g, "")

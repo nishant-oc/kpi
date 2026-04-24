@@ -65,6 +65,7 @@ from kpi.utils.project_views import (
     user_has_project_view_asset_perm,
     view_has_perm,
 )
+from kpi.utils.permissions import get_subdomain_user_ids
 from .asset_version import AssetVersionListSerializer
 from .asset_permission_assignment import AssetPermissionAssignmentSerializer
 from .asset_export_settings import AssetExportSettingsSerializer
@@ -465,19 +466,18 @@ class AssetSerializer(serializers.HyperlinkedModelSerializer):
         # caller's subdomain so that out-of-scope collections are treated as
         # "not found" by DRF rather than resolving the object and leaking its
         # existence through a different validation error.
-        try:
-            kc_user = KeycloakModel.objects.get(
-                user=self.context['request'].user
-            )
-            subdomain_user_ids = KeycloakModel.objects.filter(
-                subdomain=kc_user.subdomain
-            ).values_list('user_id', flat=True)
-            fields['parent'].queryset = Asset.objects.filter(
-                asset_type=ASSET_TYPE_COLLECTION,
-                owner__in=subdomain_user_ids,
-            )
-        except KeycloakModel.DoesNotExist:
+        user = self.context['request'].user
+        if user.is_anonymous:
             fields['parent'].queryset = Asset.objects.none()
+        else:
+            try:
+                subdomain_user_ids = get_subdomain_user_ids(user)
+                fields['parent'].queryset = Asset.objects.filter(
+                    asset_type=ASSET_TYPE_COLLECTION,
+                    owner__in=subdomain_user_ids,
+                )
+            except KeycloakModel.DoesNotExist:
+                fields['parent'].queryset = Asset.objects.none()
 
         return fields
 

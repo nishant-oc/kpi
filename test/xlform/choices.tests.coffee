@@ -142,9 +142,7 @@ module.exports = do ->
             return "#{r.type}-#{r.name}"
           ))).toEqual(["select_one state-state",
                         "select_one county-county",
-                        "select_one city-city",
-                        "start-start",
-                        "end-end"])
+                        "select_one city-city"])
         expect(row2.getList().get("name")).toBe("city")
         expect(row2.getList().getList).toBeDefined()
         expect(row2.getList().getList()).not.toBe(null)

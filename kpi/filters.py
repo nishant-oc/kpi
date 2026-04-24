@@ -41,7 +41,7 @@ from kpi.utils.object_permission import (
     get_anonymous_user,
     get_perm_ids_from_code_names,
 )
-from kpi.utils.permissions import is_user_anonymous
+from kpi.utils.permissions import is_user_anonymous, get_subdomain_user_ids
 from .models import Asset, ObjectPermission
 
 from kpi.utils.log import logging
@@ -112,21 +112,23 @@ class KpiObjectPermissionsFilter:
         # User can access assets/collections created by users with same subdomain
         model_name = queryset.model._meta.model_name
         if model_name == 'asset' or model_name == 'collection':
-            kc_user = None
             try:
-                kc_user = KeycloakModel.objects.get(user=user)
-            except KeycloakModel.DoesNotExist:
-                pass
-
-            if kc_user is not None:
-                subdomain = kc_user.subdomain
-                subdomain_userIds = KeycloakModel.objects.filter(subdomain=subdomain).values_list('user_id', flat=True)
+                subdomain_user_ids = get_subdomain_user_ids(user)
                 if model_name == 'asset':
-                    subdomain_assetIds = Asset.objects.filter(owner__in=subdomain_userIds).values_list('id', flat=True)
+                    subdomain_assetIds = Asset.objects.filter(owner__in=subdomain_user_ids).values_list('id', flat=True)
                     return queryset.filter(pk__in=subdomain_assetIds)
                 # elif model_name == 'collection':
                 #     subdomain_collectionIds = Collection.objects.filter(owner__in=subdomain_userIds).values_list('id', flat=True)
                 #     return queryset.filter(pk__in=subdomain_collectionIds)
+            except KeycloakModel.DoesNotExist:
+                # User has no Keycloak record; fall through to standard filtering
+                pass
+            except Exception:
+                logging.exception(
+                    'Unexpected error while filtering queryset by subdomain '
+                    'for user %s', user
+                )
+                raise
 
         if user.is_superuser and view.action != 'list':
             # For a list, we won't deluge the superuser with everyone else's

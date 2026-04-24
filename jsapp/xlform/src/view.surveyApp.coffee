@@ -901,7 +901,7 @@ module.exports = do ->
       $header = $et.closest('.card__header')
       card_hover_text = do ->
         if buttonName is 'settings'
-          t("Settings")
+          t("Edit")
         else if buttonName is 'delete'
           t("Delete Question")
         else if buttonName is 'duplicate'

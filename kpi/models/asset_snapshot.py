@@ -1,6 +1,7 @@
 # coding: utf-8
 # 😬
 import copy
+import traceback
 
 from django.db import models
 from django.conf import settings as django_settings
@@ -148,7 +149,7 @@ class AssetSnapshot(
                 self.owner = self.asset.owner
         _note = self.details.pop('note', None)
         _source = copy.deepcopy(self.source)
-        
+
         self._adjust_content_media_column_before_standardize(_source)
         self._standardize(_source)
         self._adjust_content_media_column(_source)
@@ -188,7 +189,7 @@ class AssetSnapshot(
 
         self.source = _source
         return super().save(*args, **kwargs)
-    
+
     def _adjust_content_media_column_before_generate_xml(self, content):
 
         media_columns = {"audio": "media::audio", "image": "media::image", "video": 'media::video'}
@@ -357,43 +358,56 @@ class AssetSnapshot(
 
         warnings = []
         details = {}
+        xml = ''
+        generation_error = None
+        generation_traceback = None
+        formpack_error = None  # original FormPack error, kept for context if fallback also fails
+
+        # Step 1: try FormPack to generate XML
         try:
             xml = FormPack({'content': source_copy},
                            root_node_name=root_node_name,
                            id_string=id_string,
                            title=form_title)[0].to_xml(warnings=warnings)
-
-            details.update({
-                'status': 'success',
-                'warnings': warnings,
-            })
-
-        except PyXFormError as err:
-            self._prepare_for_xml_pyxform_generation(source_copy, id_string=id_string)
-
-            survey_json = xls2json.workbook_to_json(source_copy)
-            survey = builder.create_survey_element_from_dict(survey_json)
-            xml = survey.to_xml()
-
-            details.update({
-                u'status': u'success',
-                u'warnings': warnings,
-            })
-
+        except PyXFormError as formpack_err:
+            formpack_error = formpack_err
+            # Step 2: FormPack failed; fall back to pyxform directly
+            try:
+                self._prepare_for_xml_pyxform_generation(source_copy, id_string=id_string)
+                survey_json = xls2json.workbook_to_json(source_copy)
+                survey = builder.create_survey_element_from_dict(survey_json)
+                xml = survey.to_xml()
+            except Exception as err:
+                generation_error = err
+                generation_traceback = traceback.format_exc()
         except Exception as err:
-            err_message = str(err)
+            generation_error = err
+            generation_traceback = traceback.format_exc()
+
+        # Step 3: update details based on whether generation succeeded or failed
+        if generation_error:
+            err_message = str(generation_error)
             logging.error('Failed to generate xform for asset', extra={
                 'src': source,
                 'id_string': id_string,
                 'uid': self.uid,
                 '_msg': err_message,
+                'traceback': generation_traceback,
+                # Include the original FormPack error so the root cause is not lost
+                'formpack_error': str(formpack_error) if formpack_error else None,
                 'warnings': warnings,
             })
-            xml = ''
             details.update({
                 'status': 'failure',
-                'error_type': type(err).__name__,
+                'error_type': type(generation_error).__name__,
                 'error': err_message,
+                # Expose the original FormPack error in the response details too
+                'formpack_error': str(formpack_error) if formpack_error else None,
+                'warnings': warnings,
+            })
+        else:
+            details.update({
+                'status': 'success',
                 'warnings': warnings,
             })
 
@@ -420,7 +434,7 @@ class AssetSnapshot(
                     soup_find_instance = soup.find_all('instance')
                     instance_count = len(soup_find_instance)
                     soup_find_instance[instance_count - 1].insert_after(oc_clinicaldata_soup.instance)
-            
+
             soup_body = soup.find('h:body')
             if 'class' in soup_body.attrs:
                 if 'no-text-transform' not in soup_body['class']:
