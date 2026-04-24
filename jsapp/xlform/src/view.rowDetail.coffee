@@ -279,7 +279,7 @@ module.exports = do ->
 
   viewRowDetail.DetailViewMixins = {}
 
-   viewRowDetail.DetailViewMixins.type =
+  viewRowDetail.DetailViewMixins.type =
     html: -> false
     insertInDOM: (rowView)->
       typeStr = @model.get("typeId")
@@ -1211,7 +1211,7 @@ module.exports = do ->
       @contact_data_type_class_name = 'contact-data-type'
       @$label_select_contact_data_type = $('<span/>', { class: @contact_data_type_class_name, style: 'display: block; margin-top: 10px;' }).text(t('Contact Data Type') + ":")
       @$select_contact_data_type = $('<select/>', { class: @contact_data_type_class_name, style: 'margin-top: 5px;' })
-     @contact_data_type_options = [
+      @contact_data_type_options = [
         {value: 'firstname',      label: 'firstname'}
         {value: 'middlename',     label: 'middlename'}
         {value: 'lastname',       label: 'lastname'}
@@ -1229,7 +1229,6 @@ module.exports = do ->
       ]
       for contact_data_type_option in @contact_data_type_options
         $('<option />', {value: contact_data_type_option.value, text: contact_data_type_option.label}).appendTo(@$select_contact_data_type)
-        $('<option />', {value: "#{contact_data_type_option}", text: "#{contact_data_type_option}"}).appendTo(@$select_contact_data_type)
 
       @identifier_type_class_name = 'identifier-type'
       @$label_select_identifier_type = $('<span/>', { class: @identifier_type_class_name, style: 'display: block; margin-top: 10px;' }).text(t('Identifier Type') + ":")
