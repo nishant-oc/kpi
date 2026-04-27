@@ -307,16 +307,18 @@ module.exports = do ->
         $indicatorIcon = @rowView.$el.find(".card__indicator__icon")
         typeStr = @model.get("typeId")
         iconDef = $icons.get(typeStr)
+        
+        $headerIcon.removeClass (i, cls) -> (cls.match(/\bk-icon-\S+/g) || []).join(' ')
         if senderValue is 'contactdata'
-          if iconDef
-            $headerIcon.removeClass(iconDef.get("iconClassName"))
           $headerIcon.addClass("k-icon k-icon-lock")
           $indicatorIcon.attr("data-tip", t("PII (Encrypted)"))
         else
-          $headerIcon.removeClass("k-icon k-icon-lock")
           if iconDef
             $headerIcon.addClass(iconDef.get("iconClassName"))
             $indicatorIcon.attr("data-tip", iconDef.get("label"))
+          else
+            $headerIcon.addClass("k-icon-alert")
+            $indicatorIcon.attr("data-tip", typeStr)
       return
 
 
@@ -1097,9 +1099,6 @@ module.exports = do ->
           @$el.removeClass('hidden')
           @$('input').prop('disabled', false)
           @makeRequired()
-      else
-        @$('input').prop('disabled', false)
-        @makeRequired()
     html: ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
