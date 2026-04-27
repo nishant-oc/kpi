@@ -30,11 +30,6 @@ pipeline {
                         sh "npm test"
                     } catch (Exception e) {
                         currentBuild.result = 'FAILURE'
-                        slackSend(
-                            channel: env.SLACK_CHANNEL,
-                            color: 'danger',
-                            message: "${env.SERVICE_NAME} - FRONTEND UNIT TESTS FAILED for branch ${env.release_branch}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})\nError: ${e.getMessage()}\nPlease review the console output at ${env.BUILD_URL}console"
-                        )
                         error("Frontend unit tests failed. Aborting pipeline. Error: ${e.getMessage()}")
                     }
                 }
