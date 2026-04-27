@@ -27,6 +27,7 @@ pipeline {
             steps {
                 script {
                     try {
+                        sh "npm ci"
                         sh "npm test"
                     } catch (Exception e) {
                         currentBuild.result = 'FAILURE'
