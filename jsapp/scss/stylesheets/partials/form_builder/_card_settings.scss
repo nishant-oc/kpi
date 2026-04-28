@@ -212,6 +212,14 @@
     }
   }
 
+  select.is-placeholder {
+    color: #94A3B8;
+  }
+
+  select.is-placeholder option {
+    color: #334155;
+  }
+
   input[type="text"],
   textarea {
     &::placeholder {

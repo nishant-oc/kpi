@@ -748,7 +748,7 @@ module.exports = do ->
           appearances = @getTypes()
           if appearances?
             appearances.push 'other'
-            appearances.unshift 'select'
+            appearances.unshift { value: 'select', text: t('Select') }
             @is_input_select = true
             return viewRowDetail.Templates.dropdown @cid, @model.key, appearances, t("Appearance")
           else
@@ -974,6 +974,12 @@ module.exports = do ->
         if $select.length > 0 # Question item appearance is dropdown
           @$textbox_other = $('<input/>', { class:'text', type: 'text', width: 'auto', style: 'display: block; margin-top: 5px;' })
 
+          updateSelectPlaceholderClass = () =>
+            if $select.val() == 'select'
+              $select.addClass('is-placeholder')
+            else
+              $select.removeClass('is-placeholder')
+
           if modelValue? and modelValue != '' # Parse existing value
             modelValue = modelValue.trim()
             select_value = null
@@ -1005,10 +1011,13 @@ module.exports = do ->
               @is_input_text_other = true
               @add_input_text_change_handler(@$textbox_other, @not_group_inputs_change_handler)
 
+          updateSelectPlaceholderClass()
+
           @$select_width.on 'change', () =>
             @not_group_inputs_change_handler()
 
           $select.on 'change', () =>
+            updateSelectPlaceholderClass()
             if $select.val() == 'other'
               @$textbox_other.insertAfter $select
               @is_input_text_other = true
