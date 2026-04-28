@@ -1242,6 +1242,21 @@ module.exports = do ->
         @$('.settings__input').append(@$label_select_contact_data_type)
         @$('.settings__input').append(@$select_contact_data_type)
 
+        syncContactDataTypeToItemType = () =>
+          selectedContactDataType = @$select_contact_data_type.val()
+          typeDetail = @rowView.model.get('type')
+          return  unless typeDetail?
+
+          isExternalContactData = @rowView.model.getValue?('bind::oc:external') is 'contactdata'
+          return  unless isExternalContactData
+
+          if selectedContactDataType is 'fulldob'
+            if typeDetail.get('typeId') is 'text'
+              typeDetail.set('value', 'date')
+          else
+            if typeDetail.get('typeId') is 'date'
+              typeDetail.set('value', 'text')
+
         instance_contactdata_value = @rowView.model.attributes['instance::oc:contactdata'].get 'value'
         contact_data_values = (opt.value for opt in @contact_data_type_options)
         if instance_contactdata_value != '' and (instance_contactdata_value in contact_data_values)
@@ -1250,8 +1265,11 @@ module.exports = do ->
           @$select_contact_data_type.val('firstname')
           @rowView.model.attributes['instance::oc:contactdata'].set 'value', 'firstname'
 
+        syncContactDataTypeToItemType()
+
         @$select_contact_data_type.change () =>
           @rowView.model.attributes['instance::oc:contactdata'].set 'value', @$select_contact_data_type.val()
+          syncContactDataTypeToItemType()
       addSelectIdentifierType = () =>
         @$('.settings__input').append(@$label_select_identifier_type)
         @$('.settings__input').append(@$select_identifier_type)
