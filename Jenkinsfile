@@ -23,6 +23,9 @@ pipeline {
                 checkout scmGit(branches: [[name: '*/$release_branch']], extensions: [], userRemoteConfigs: [[credentialsId: 'jenkins-github-token-as-password', url: 'https://github.com/OpenClinica/kpi.git']])
             }
         }
+        // Run frontend unit tests in a Docker-based, pinned Node/npm environment to ensure reproducible CI results.
+        // Installs Chromium to provide a headless browser binary required by the test runner at runtime.
+        // Execution is gated by ENV to avoid unnecessary CI cost during deploy-only workflows.
         stage('Run Frontend Tests') {
             agent {
                 docker {
