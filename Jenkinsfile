@@ -23,15 +23,42 @@ pipeline {
                 checkout scmGit(branches: [[name: '*/$release_branch']], extensions: [], userRemoteConfigs: [[credentialsId: 'jenkins-github-token-as-password', url: 'https://github.com/OpenClinica/kpi.git']])
             }
         }
-        stage('Frontend Unit Tests') {
+        stage('Run Frontend Tests') {
+            agent {
+                docker {
+                    image 'node:16.15.0-bullseye'
+                    args '--user root:root'
+                    reuseNode true
+                }
+            }
             steps {
                 script {
-                    try {
-                        sh "npm ci"
-                        sh "npm test"
-                    } catch (Exception e) {
-                        currentBuild.result = 'FAILURE'
-                        error("Frontend unit tests failed. Aborting pipeline. Error: ${e.getMessage()}")
+                    if ( env.ENV == "build" || env.ENV == "build & deploy") {
+                        try {
+                            sh """
+                                set -eu
+                                apt-get update
+                                apt-get install -y --no-install-recommends chromium
+                                npm install -g npm@8.5.5
+
+                                test "\$(node --version)" = "v16.15.0"
+                                test "\$(npm --version)" = "8.5.5"
+
+                                if command -v chromium >/dev/null 2>&1; then
+                                    chromium --version
+                                elif command -v google-chrome >/dev/null 2>&1; then
+                                    google-chrome --version
+                                else
+                                    echo "Chrome/Chromium is required for frontend unit tests but was not found."
+                                    exit 1
+                                fi
+
+                                npm install --quiet
+                                npm test
+                            """
+                        } catch (err) {
+                            error "Frontend tests failed: ${err}"
+                        }
                     }
                 }
             }
