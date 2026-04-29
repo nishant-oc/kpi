@@ -1337,10 +1337,15 @@ module.exports = do ->
           text: "#{labelValue} (${#{row.getValue('name')}})"
         }
       )
-      # add placeholder message/option
+      # add normal option
       options.unshift({
         value: ''
         text: t("No Trigger")
+      })
+      # add placeholder message/option
+      options.unshift({
+        value: 'select'
+        text: t("Select")
       })
       options
     html: ->
@@ -1352,11 +1357,26 @@ module.exports = do ->
     afterRender: ->
       $select = @$('select')
       modelValue = @model.get 'value'
+
+      updateSelectPlaceholderClass = () =>
+        if $select.val() == 'select'
+          $select.addClass('is-placeholder')
+        else
+          $select.removeClass('is-placeholder')
+
       if $select.length > 0
         if modelValue != ''
           $select.val(modelValue)
+        else
+          $select.val('select')
+
+        updateSelectPlaceholderClass()
 
         $select.change () =>
-          @model.set 'value', $select.val()
+          updateSelectPlaceholderClass()
+          value = $select.val()
+          if value == 'select'
+            value = ''
+          @model.set 'value', value
 
   viewRowDetail
