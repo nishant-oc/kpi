@@ -119,6 +119,11 @@ module.exports = do ->
       rowDetails =
         type: rowType
 
+      if rowType is 'pii_encrypted'
+        rowDetails.type = 'text'
+        rowDetails['bind::oc:external'] = 'contactdata'
+        rowDetails['bind::oc:itemgroup'] = ''
+
       rowDetails.label = questionLabelValue
 
       if questionLabelValue != ''

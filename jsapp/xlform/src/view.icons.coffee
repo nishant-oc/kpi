@@ -33,6 +33,7 @@ module.exports = do ->
   addIconToRow(constants.QUESTION_TYPES.video, "r3")
   # row 4
   addIconToRow(constants.QUESTION_TYPES.select_one_from_file, "r4")
+  addIconToRow(constants.QUESTION_TYPES.pii_encrypted, "r4")
   
   class QtypeIcon extends Backbone.Model
     defaults: {
