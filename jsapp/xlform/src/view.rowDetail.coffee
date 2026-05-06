@@ -307,7 +307,7 @@ module.exports = do ->
         $indicatorIcon = @rowView.$el.find(".card__indicator__icon")
         typeStr = @model.get("typeId")
         iconDef = $icons.get(typeStr)
-        
+
         $headerIcon.removeClass (i, cls) -> (cls.match(/\bk-icon-\S+/g) || []).join(' ')
         if senderValue is 'contactdata'
           $headerIcon.addClass("k-icon k-icon-lock")
@@ -1128,16 +1128,7 @@ module.exports = do ->
     html: ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
-      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Group"), 'text', 'Enter data set name'
-    afterRender: ->
-      @listenForInputChange()
-      @makeRequired()
-
-  viewRowDetail.DetailViewMixins.oc_briefdescription =
-    html: ->
-      @fieldTab = "active"
-      @$el.addClass("card__settings__fields--#{@fieldTab}")
-      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Brief Description"), 'text', t('Enter Text'), '40'
+      viewRowDetail.Templates.textbox @cid, @model.key, t("Short Display Name"), 'text', t('If the item is used in configurable tables (e.g. Participant Matrix) this will be used as the column header (optional)'), '40'
     afterRender: ->
       @listenForInputChange()
 
@@ -1145,7 +1136,7 @@ module.exports = do ->
     html: ->
       @fieldTab = "active"
       @$el.addClass("card__settings__fields--#{@fieldTab}")
-      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Description"), 'text', t('Enter Text'), '3999'
+      viewRowDetail.Templates.textbox @cid, @model.key, t("Item Description"), 'text', t('Enter item definition (e.g. CDASH data definition). This will appear only in some metadata and extracts (optional)'), '3999'
     afterRender: ->
       @listenForInputChange()
 
