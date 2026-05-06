@@ -820,13 +820,15 @@ export default assign({
             </span>
 
             { showAllAvailable &&
-              <bem.FormBuilderHeader__button m={['show-all', {
-                    open: showAllOpen,
-                  }]}
-                  onClick={this.showAll}
-                  data-tip={t('Expand / collapse questions')}>
-                <i className='k-icon k-icon-view-all' />
-              </bem.FormBuilderHeader__button>
+              <span className='left-tooltip' data-tip={t('Expand / collapse questions')}>
+                <bem.FormBuilderHeader__button m={['show-all', {
+                      open: showAllOpen,
+                    }]}
+                    onClick={this.showAll}
+                >
+                  <i className='k-icon k-icon-view-all' />
+                </bem.FormBuilderHeader__button>
+              </span>
             }
 
             <span className='left-tooltip' data-tip={groupable ? t('Create group with selected questions') : t('Grouping disabled. Please select at least one question.')}>
