@@ -868,7 +868,7 @@ export default assign({
                   disabled={!groupable}
                   className='add-questions-to-library'
                 >
-                  <i class='k-icon-folder'>
+                  <i className='k-icon-folder'>
                     <i className='k-icon-plus' />
                   </i>
                 </bem.FormBuilderHeader__button>
