@@ -809,14 +809,15 @@ export default assign({
 
         <bem.FormBuilderHeader__row m={'secondary'} >
           <bem.FormBuilderHeader__cell m={'toolsButtons'} >
-            <bem.FormBuilderHeader__button
-              m={['preview', {previewdisabled: previewDisabled}]}
-              onClick={this.previewForm}
-              disabled={previewDisabled}
-              data-tip={t('Preview form')}
-            >
-              <i className='k-icon k-icon-view' />
-            </bem.FormBuilderHeader__button>
+            <span className='left-tooltip' data-tip={t('Preview form')}>
+              <bem.FormBuilderHeader__button
+                m={['preview', {previewdisabled: previewDisabled}]}
+                onClick={this.previewForm}
+                disabled={previewDisabled}
+              >
+                <i className='k-icon k-icon-view' />
+              </bem.FormBuilderHeader__button>
+            </span>
 
             { showAllAvailable &&
               <bem.FormBuilderHeader__button m={['show-all', {
@@ -828,46 +829,50 @@ export default assign({
               </bem.FormBuilderHeader__button>
             }
 
-            <bem.FormBuilderHeader__button
-              m={['group', {groupable: groupable}]}
-              onClick={this.groupQuestions}
-              disabled={!groupable}
-              className={this.isAddingGroupsRestricted() ? LOCKING_UI_CLASSNAMES.DISABLED : ''}
-              data-tip={groupable ? t('Create group with selected questions') : t('Grouping disabled. Please select at least one question.')}
-            >
-              <i className='k-icon k-icon-group' />
-            </bem.FormBuilderHeader__button>
-
-            <bem.FormBuilderHeader__button
-              m={['group', {groupable: groupable}]}
-              onClick={this.deleteQuestions}
-              disabled={!groupable}
-              data-tip={groupable ? t('Delete selected questions') : t('Delete questions disabled. Please select at least one question.')}
-            >
-              <i className='k-icon-trash' />
-            </bem.FormBuilderHeader__button>
-
-            <bem.FormBuilderHeader__button
-              m={['group', {groupable: groupable}]}
-              onClick={this.duplicateQuestions}
-              disabled={!groupable}
-              data-tip={groupable ? t('Duplicate selected questions') : t('Duplicate questions disabled. Please select at least one question.')}
-            >
-              <i className='k-icon-duplicate' />
-            </bem.FormBuilderHeader__button>
-
-            {this.canAddToLibrary() &&
+            <span className='left-tooltip' data-tip={groupable ? t('Create group with selected questions') : t('Grouping disabled. Please select at least one question.')}>
               <bem.FormBuilderHeader__button
                 m={['group', {groupable: groupable}]}
-                onClick={this.addQuestionsToLibrary}
+                onClick={this.groupQuestions}
                 disabled={!groupable}
-                data-tip={groupable ? t('Add selected questions to library') : t('Add selected questions to library disabled. Please select at least one question.')}
-                className='add-questions-to-library'
+                className={this.isAddingGroupsRestricted() ? LOCKING_UI_CLASSNAMES.DISABLED : ''}
               >
-                <i class='k-icon-folder'>
-                  <i className='k-icon-plus' />
-                </i>
+                <i className='k-icon k-icon-group' />
               </bem.FormBuilderHeader__button>
+            </span>
+
+            <span className='left-tooltip' data-tip={groupable ? t('Delete selected questions') : t('Delete questions disabled. Please select at least one question.')}>
+              <bem.FormBuilderHeader__button
+                m={['group', {groupable: groupable}]}
+                onClick={this.deleteQuestions}
+                disabled={!groupable}
+              >
+                <i className='k-icon-trash' />
+              </bem.FormBuilderHeader__button>
+            </span>
+
+            <span className='left-tooltip' data-tip={groupable ? t('Duplicate selected questions') : t('Duplicate questions disabled. Please select at least one question.')}>
+              <bem.FormBuilderHeader__button
+                m={['group', {groupable: groupable}]}
+                onClick={this.duplicateQuestions}
+                disabled={!groupable}
+              >
+                <i className='k-icon-duplicate' />
+              </bem.FormBuilderHeader__button>
+            </span>
+
+            {this.canAddToLibrary() &&
+              <span className='left-tooltip' data-tip={groupable ? t('Add selected questions to library') : t('Add selected questions to library disabled. Please select at least one question.')}>
+                <bem.FormBuilderHeader__button
+                  m={['group', {groupable: groupable}]}
+                  onClick={this.addQuestionsToLibrary}
+                  disabled={!groupable}
+                  className='add-questions-to-library'
+                >
+                  <i class='k-icon-folder'>
+                    <i className='k-icon-plus' />
+                  </i>
+                </bem.FormBuilderHeader__button>
+              </span>
             }
 
           </bem.FormBuilderHeader__cell>
