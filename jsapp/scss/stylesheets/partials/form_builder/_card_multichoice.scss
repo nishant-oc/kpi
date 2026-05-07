@@ -89,7 +89,7 @@
     font-weight: 600;
     font-size: 12px;
     font-family: $font;
-    padding: 0px;
+    padding: 0;
     width: 25%;
     text-align: left;
     display: inline-block;
@@ -104,11 +104,12 @@
       color: colors.$kobo-gray-40;
     }
 
-    span, input {
-      width: 83% !important;
-      border: $thinBorderStyle !important;
-      border-radius: 5px !important;
-      padding: 8px 4px 2px 2px !important;
+    span, input[type="text"] {
+      width: 83%;
+      border: $thinBorderStyle;
+      border-radius: 5px;
+      padding: 8px 4px 2px 2px;
+      font-size: 12px;
     }
 
     span {
@@ -131,7 +132,6 @@
       float: right;
       color: $linkColor;
       line-height: inherit;
-      font-size: 12px !important;
     }
   }
 
@@ -155,6 +155,6 @@
   position: absolute;
   width: 100%;
   height: 100%;
-  top: 0px;
+  top: 0;
   z-index: 1;
 }
