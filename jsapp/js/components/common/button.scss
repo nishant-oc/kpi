@@ -25,6 +25,12 @@ $button-icon-alone-l: icon.$s-icon-l;
 $button-border-width: sizes.$x1;
 $button-border-radius: sizes.$x6;
 
+// button container for data-tip purpose
+.button-container {
+  display: inline-block;
+  height: inherit;
+}
+
 // Sets colors for `bare` type button.
 @mixin button-bare($mainColor) {
   color: $mainColor;
