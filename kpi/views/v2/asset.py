@@ -803,7 +803,20 @@ class AssetViewSet(
         user = get_database_user(self.request.user)
         serializer.save(owner=User.objects.get(username=user))
 
+    def _check_subdomain_access(self, asset_owner_id):
+        """
+        Raises Http404 if the requesting user does not share the same Keycloak
+        subdomain as the given asset owner. Non-Keycloak users are passed
+        through without restriction.
+        """
+        try:
+            if not is_owner_in_subdomain(self.request.user, asset_owner_id):
+                raise Http404
+        except KeycloakModel.DoesNotExist:
+            return
+
     def perform_destroy(self, instance):
+        self._check_subdomain_access(instance.owner.id)
         self._bulk_asset_actions(
             {'payload': {'asset_uids': [instance.uid], 'action': 'delete'}}
         )
@@ -875,7 +888,10 @@ class AssetViewSet(
         :return: AssetSerializer
         """
         original_uid = self.request.data[CLONE_ARG_NAME]
-        original_asset = get_object_or_404(Asset, uid=original_uid)
+        original_asset = get_object_or_404(
+            get_objects_for_user(self.request.user, 'view_asset', Asset),
+            uid=original_uid,
+        )
         if CLONE_FROM_VERSION_ID_ARG_NAME in self.request.data:
             original_version_id = self.request.data.get(CLONE_FROM_VERSION_ID_ARG_NAME)
             source_version = get_object_or_404(
@@ -883,11 +899,7 @@ class AssetViewSet(
         else:
             source_version = original_asset.asset_versions.first()
 
-        try:
-            if not is_owner_in_subdomain(self.request.user, original_asset.owner.id):
-                raise Http404
-        except KeycloakModel.DoesNotExist:
-            raise Http404
+        self._check_subdomain_access(original_asset.owner.id)
 
         partial_update = isinstance(current_asset, Asset)
         cloned_data = self._prepare_cloned_data(original_asset, source_version, partial_update)

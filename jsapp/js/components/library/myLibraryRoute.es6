@@ -12,6 +12,7 @@ import {stores} from 'js/stores';
 import {validFileTypes} from 'utils';
 import myLibraryStore from './myLibraryStore';
 import libraryTypeFilterStore from './libraryTypeFilterStore';
+import ownedCollectionsStore from './ownedCollectionsStore';
 import AssetsTable from 'js/components/assetsTable/assetsTable';
 import {MODAL_TYPES} from 'js/constants';
 import {ROOT_BREADCRUMBS} from 'js/components/library/libraryConstants';
@@ -53,7 +54,8 @@ class MyLibraryRoute extends React.Component {
 
   componentDidMount() {
     this.unlisteners.push(
-      myLibraryStore.listen(this.myLibraryStoreChanged)
+      myLibraryStore.listen(this.myLibraryStoreChanged),
+      ownedCollectionsStore.listen(this.myLibraryStoreChanged)
     );
   }
 
