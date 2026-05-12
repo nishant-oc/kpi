@@ -13,13 +13,6 @@ if [[ -z $DATABASE_URL ]]; then
     exit 1
 fi
 
-# ---------------------------------------------------------------------------
-# Readiness helpers — poll with exponential backoff (max 30 s between retries,
-# up to 60 attempts ≈ ~10 minutes worst-case) before running migrations so
-# that transient DB unavailability at container start doesn't crash the init
-# process under set -e.
-# ---------------------------------------------------------------------------
-
 wait_for_postgres() {
     local host port retries=60 wait=2
     host=$(python3 -c "import os,urllib.parse; u=urllib.parse.urlparse(os.environ['DATABASE_URL']); print(u.hostname)")
@@ -38,10 +31,8 @@ wait_for_postgres() {
     echo "PostgreSQL is ready."
 }
 
-# Handle Python dependencies BEFORE attempting any `manage.py` commands
 KPI_WEB_SERVER="${KPI_WEB_SERVER:-uWSGI}"
 if [[ "${KPI_WEB_SERVER,,}" == 'uwsgi' ]]; then
-    # `diff` returns exit code 1 if it finds a difference between the files
     if ! diff -q "${KPI_SRC_DIR}/dependencies/pip/requirements.txt" "${TMP_DIR}/pip_dependencies.txt"
     then
         echo "Syncing production pip dependencies…"
@@ -61,17 +52,36 @@ wait_for_postgres
 
 # ---------------------------------------------------------------------------
 # Fix inconsistent migration history from original Docker PG9.5 DB.
-# These records were missing or inconsistent in the original database.
-# We insert them if they don't exist to prevent Django from complaining
-# about dependency ordering issues.
+# Insert all potentially missing migration records in correct dependency order
+# to prevent Django InconsistentMigrationHistory errors on startup.
+# Safe to run multiple times — uses WHERE NOT EXISTS to avoid duplicates.
 # ---------------------------------------------------------------------------
 echo 'Fixing inconsistent migration history from original Docker DB...'
 gosu "${UWSGI_USER}" python manage.py shell -c "
 from django.db import connection
-from datetime import datetime
 
 missing_migrations = [
+    ('kpi', '0038_add_data_sharing_to_asset'),
+    ('kpi', '0039_add_support_paired_data_to_asset_file'),
+    ('kpi', '0040_synchronous_export'),
+    ('kpi', '0041_asset_advanced_features'),
+    ('kpi', '0042_snapshots_uuids'),
+    ('kpi', '0043_asset_tracks_addl_columns'),
+    ('kpi', '0044_standardize_searchable_fields'),
     ('kpi', '0045_project_view_export_task'),
+    ('kpi', '0046_project_view_assets_indexes'),
+    ('kpi', '0047_asset_date_deployed'),
+    ('kpi', '0048_remove_onetimeauthenticationkey'),
+    ('kpi', '0049_add_pending_delete_to_asset'),
+    ('kpi', '0050_add_indexes_to_import_and_export_tasks'),
+    ('bossoidc2', '0002_auto_20201110_2129'),
+    ('bossoidc2', '0002_keycloak_subdomain'),
+    ('bossoidc2', '0003_keycloak_usertype'),
+    ('oauth2_provider', '0002_auto_20190406_1805'),
+    ('oauth2_provider', '0003_auto_20201211_1314'),
+    ('oauth2_provider', '0004_auto_20200902_2022'),
+    ('oauth2_provider', '0005_auto_20211222_2352'),
+    ('oauth2_provider', '0006_alter_application_client_secret'),
 ]
 
 cursor = connection.cursor()
@@ -89,44 +99,6 @@ for app, name in missing_migrations:
 print('Migration history fix complete.')
 " || true
 
-# ---------------------------------------------------------------------------
-# Fake migrations for schema compatibility when migrating from Docker PG9.5
-# to RDS. These migrations try to create tables/columns that already exist
-# in the restored database. We fake them to mark as applied without running.
-#
-# Rules:
-# - DuplicateTable/DuplicateColumn errors = fake the migration
-# - UndefinedColumn/UndefinedTable errors = run for real (do NOT fake)
-# - Always specify exact migration name to avoid rolling back applied ones
-# - The || true ensures script continues if already applied
-# ---------------------------------------------------------------------------
-echo 'Running fake migrations for existing schema compatibility...'
-
-# bossoidc2 — table bossoidc_keycloak and columns already exist from restored DB
-gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0002_auto_20201110_2129 --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0002_keycloak_subdomain --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0003_keycloak_usertype --fake --noinput || true
-
-# kpi — following columns already exist in kpi_asset from restored DB:
-# data_sharing, advanced_features, asset_type, _deployment_data, map_styles,
-# map_custom_details, symbol, date_deployed, pending_delete
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0038_add_data_sharing_to_asset --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0041_asset_advanced_features --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0042_snapshots_uuids --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0043_asset_tracks_addl_columns --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0044_standardize_searchable_fields --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0045_project_view_export_task --fake --noinput || true
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0046_project_view_assets_indexes --fake --noinput || true
-# Note: 0047_asset_date_deployed must run for real — column does not exist
-# Note: 0048_remove_onetimeauthenticationkey must run for real
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0049_add_pending_delete_to_asset --fake --noinput || true
-# Note: 0050 must run for real only if data column is jsonb
-# If it fails with operator does not exist, fake it
-gosu "${UWSGI_USER}" python manage.py migrate kpi 0050_add_indexes_to_import_and_export_tasks --fake --noinput || true
-
-# oauth2_provider — partially applied migrations in old DB
-gosu "${UWSGI_USER}" python manage.py migrate oauth2_provider --fake --noinput || true
-
 echo 'Running all remaining migrations...'
 gosu "${UWSGI_USER}" python manage.py migrate --noinput
 
@@ -136,7 +108,6 @@ gosu "${UWSGI_USER}" python manage.py create_kobo_superuser
 if [[ ! -d "${KPI_SRC_DIR}/staticfiles" ]] || ! python "${KPI_SRC_DIR}/docker/check_kpi_prefix_outdated.py"; then
     if [[ "${FRONTEND_DEV_MODE}" == "host" ]]; then
         echo "Dev mode is activated and \`npm\` should be run from host."
-        # Create folder to be sure following `rsync` command does not fail
         mkdir -p "${KPI_SRC_DIR}/staticfiles"
     else
         echo "Cleaning old build…"
@@ -180,9 +151,6 @@ rm -rf /tmp/celery*.pid
 echo 'Restore permissions on Celery logs folder'
 chown -R "${UWSGI_USER}:${UWSGI_GROUP}" "${KPI_LOGS_DIR}"
 
-# This can take a while when starting a container with lots of media files.
-# Maybe we should add a disclaimer as we do in KoBoCAT to let the users
-# do it themselves
 chown -R "${UWSGI_USER}:${UWSGI_GROUP}" "${KPI_MEDIA_DIR}"
 
 echo 'KPI initialization completed.'
