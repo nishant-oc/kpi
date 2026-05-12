@@ -55,6 +55,10 @@ wait_for_postgres
 # Insert all potentially missing migration records in correct dependency order
 # to prevent Django InconsistentMigrationHistory errors on startup.
 # Safe to run multiple times — uses WHERE NOT EXISTS to avoid duplicates.
+#
+# NOTE: 0047_asset_date_deployed is intentionally NOT in this list because
+# the date_deployed column does not exist in the original Docker DB and must
+# be created by running the migration for real.
 # ---------------------------------------------------------------------------
 echo 'Fixing inconsistent migration history from original Docker DB...'
 gosu "${UWSGI_USER}" python manage.py shell -c "
@@ -70,7 +74,7 @@ missing_migrations = [
     ('kpi', '0044_standardize_searchable_fields'),
     ('kpi', '0045_project_view_export_task'),
     ('kpi', '0046_project_view_assets_indexes'),
-    ('kpi', '0047_asset_date_deployed'),
+    # 0047_asset_date_deployed intentionally omitted — must run for real
     ('kpi', '0048_remove_onetimeauthenticationkey'),
     ('kpi', '0049_add_pending_delete_to_asset'),
     ('kpi', '0050_add_indexes_to_import_and_export_tasks'),
