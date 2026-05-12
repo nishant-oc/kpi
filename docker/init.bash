@@ -52,40 +52,56 @@ wait_for_postgres
 
 # ---------------------------------------------------------------------------
 # Fix inconsistent migration history from original Docker PG9.5 DB.
-# Insert all potentially missing migration records in correct dependency order
-# to prevent Django InconsistentMigrationHistory errors on startup.
-# Safe to run multiple times — uses WHERE NOT EXISTS to avoid duplicates.
 #
-# NOTE: 0047_asset_date_deployed is intentionally NOT in this list because
-# the date_deployed column does not exist in the original Docker DB and must
-# be created by running the migration for real.
+# RULES (learned from migration testing):
+# - Insert into django_migrations = migration already applied in old DB
+#   (table/column exists) but record was missing — safe to mark as done
+# - DO NOT insert = column/table genuinely missing — must run for real
+# - fake migrate = table/column exists but Django would try to create again
+#
+# Migrations that run for real (columns/tables missing from old DB):
+#   kpi.0038 — data_sharing column missing
+#   kpi.0041 — advanced_features column missing
+#   kpi.0044 — searchable_fields column missing
+#   kpi.0047 — date_deployed column missing
+#   kpi.0048 — removes kpi_onetimeauthenticationkey (already gone, fake it)
+#
+# Migrations that are faked (tables/columns already exist):
+#   kpi.0039, 0040, 0042, 0043, 0045, 0046, 0048, 0049, 0050
+#   bossoidc2.0002_auto, 0002_keycloak_subdomain, 0003_keycloak_usertype
+#   oauth2_provider.0002 through 0006
+#   subsequences.0001, 0002
 # ---------------------------------------------------------------------------
 echo 'Fixing inconsistent migration history from original Docker DB...'
 gosu "${UWSGI_USER}" python manage.py shell -c "
 from django.db import connection
 
+# These migrations are recorded as applied in django_migrations to fix
+# dependency chain issues. Their tables/columns already exist in the DB.
 missing_migrations = [
-    ('kpi', '0038_add_data_sharing_to_asset'),
+    # kpi — these exist in DB but records were missing causing chain errors
     ('kpi', '0039_add_support_paired_data_to_asset_file'),
     ('kpi', '0040_synchronous_export'),
-    ('kpi', '0041_asset_advanced_features'),
     ('kpi', '0042_snapshots_uuids'),
     ('kpi', '0043_asset_tracks_addl_columns'),
-    ('kpi', '0044_standardize_searchable_fields'),
     ('kpi', '0045_project_view_export_task'),
     ('kpi', '0046_project_view_assets_indexes'),
-    # 0047_asset_date_deployed intentionally omitted — must run for real
     ('kpi', '0048_remove_onetimeauthenticationkey'),
     ('kpi', '0049_add_pending_delete_to_asset'),
     ('kpi', '0050_add_indexes_to_import_and_export_tasks'),
+    # bossoidc2 — table and columns already exist from restored DB
     ('bossoidc2', '0002_auto_20201110_2129'),
     ('bossoidc2', '0002_keycloak_subdomain'),
     ('bossoidc2', '0003_keycloak_usertype'),
+    # oauth2_provider — partially applied in old DB
     ('oauth2_provider', '0002_auto_20190406_1805'),
     ('oauth2_provider', '0003_auto_20201211_1314'),
     ('oauth2_provider', '0004_auto_20200902_2022'),
     ('oauth2_provider', '0005_auto_20211222_2352'),
     ('oauth2_provider', '0006_alter_application_client_secret'),
+    # subsequences — table already exists from restored DB
+    ('subsequences', '0001_initial'),
+    ('subsequences', '0002_non_nullable_unique_together_asset_and_submission_uuid'),
 ]
 
 cursor = connection.cursor()
