@@ -151,6 +151,7 @@ rm -rf /tmp/celery*.pid
 echo 'Restore permissions on Celery logs folder'
 chown -R "${UWSGI_USER}:${UWSGI_GROUP}" "${KPI_LOGS_DIR}"
 
+mkdir -p "${KPI_MEDIA_DIR}"
 chown -R "${UWSGI_USER}:${UWSGI_GROUP}" "${KPI_MEDIA_DIR}"
 
 echo 'KPI initialization completed.'
