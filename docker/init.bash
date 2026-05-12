@@ -13,6 +13,31 @@ if [[ -z $DATABASE_URL ]]; then
     exit 1
 fi
 
+# ---------------------------------------------------------------------------
+# Readiness helpers — poll with exponential backoff (max 30 s between retries,
+# up to 60 attempts ≈ ~10 minutes worst-case) before running migrations so
+# that transient DB unavailability at container start doesn't crash the init
+# process under set -e.
+# ---------------------------------------------------------------------------
+
+wait_for_postgres() {
+    local host port retries=60 wait=2
+    host=$(python3 -c "import os,urllib.parse; u=urllib.parse.urlparse(os.environ['DATABASE_URL']); print(u.hostname)")
+    port=$(python3 -c "import os,urllib.parse; u=urllib.parse.urlparse(os.environ['DATABASE_URL']); print(u.port or 5432)")
+    echo "Waiting for PostgreSQL at ${host}:${port}…"
+    until pg_isready -h "${host}" -p "${port}" -q; do
+        retries=$(( retries - 1 ))
+        if [[ ${retries} -le 0 ]]; then
+            echo "PostgreSQL at ${host}:${port} did not become ready in time. Aborting."
+            exit 1
+        fi
+        echo "PostgreSQL not ready — retrying in ${wait}s… (${retries} attempts left)"
+        sleep "${wait}"
+        wait=$(( wait < 30 ? wait * 2 : 30 ))
+    done
+    echo "PostgreSQL is ready."
+}
+
 # Handle Python dependencies BEFORE attempting any `manage.py` commands
 KPI_WEB_SERVER="${KPI_WEB_SERVER:-uWSGI}"
 if [[ "${KPI_WEB_SERVER,,}" == 'uwsgi' ]]; then
@@ -32,14 +57,27 @@ else
     fi
 fi
 
-# Wait for databases to be up & running before going further
-/bin/bash "${INIT_PATH}/wait_for_mongo.bash"
-/bin/bash "${INIT_PATH}/wait_for_postgres.bash"
+wait_for_postgres
 
-echo 'Running fake migrations.'
-gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0002_auto_20201110_2129 --fake --noinput
-gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0002_keycloak_subdomain --fake --noinput
-gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0003_keycloak_usertype --fake --noinput
+# ---------------------------------------------------------------------------
+# Fake migrations for schema compatibility when migrating from Docker PG9.5
+# to RDS. These migrations try to create tables/columns that already exist
+# in the restored database. We fake them to mark as applied without running.
+# The || true ensures the script continues even if already faked/applied.
+# ---------------------------------------------------------------------------
+echo 'Running fake migrations for existing schema compatibility...'
+gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0002_auto_20201110_2129 --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0002_keycloak_subdomain --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate bossoidc2 0003_keycloak_usertype --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0038_add_data_sharing_to_asset --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0041_asset_advanced_features --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0042_snapshots_uuids --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0043_asset_tracks_addl_columns --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0044_standardize_searchable_fields --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0045_project_view_export_task --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0046_project_view_assets_indexes --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate kpi 0049_add_pending_delete_to_asset --fake --noinput || true
+gosu "${UWSGI_USER}" python manage.py migrate oauth2_provider --fake --noinput || true
 
 echo 'Running migrations...'
 gosu "${UWSGI_USER}" python manage.py migrate --noinput
@@ -73,7 +111,7 @@ if [[ ! -d "${KPI_SRC_DIR}/staticfiles" ]] || ! python "${KPI_SRC_DIR}/docker/ch
 fi
 
 echo "Copying static files to nginx volume…"
-rsync -aq --delete --chown=www-data "${KPI_SRC_DIR}/staticfiles/" "${NGINX_STATIC_DIR}/"
+rsync -aq --no-times --delete --chown=www-data "${KPI_SRC_DIR}/staticfiles/" "${NGINX_STATIC_DIR}/" || true
 
 if [[ ! -d "${KPI_SRC_DIR}/locale" ]] || [[ -z "$(ls -A ${KPI_SRC_DIR}/locale)" ]]; then
     echo "Fetching translations…"
